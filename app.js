@@ -13,7 +13,8 @@ app.use(express.static('public'));
 
 // Routes
 app.get('/', (req, res) => {
-    res.render('index');
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    res.render('index', { baseUrl });
 });
 
 // Hàm detect loại content
@@ -159,6 +160,32 @@ app.get('/render-content/:id', (req, res) => {
             }
         }
     });
+});
+
+// API endpoint
+app.post('/api/render', (req, res) => {
+    const { content } = req.body;
+    if (!content) {
+        return res.status(400).json({ error: 'Content is required' });
+    }
+
+    const type = detectContentType(content);
+    const id = uuidv4();
+    
+    db.run('INSERT INTO renders (id, input_code, type) VALUES (?, ?, ?)',
+        [id, content, type],
+        (err) => {
+            if (err) {
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            const viewUrl = `${req.protocol}://${req.get('host')}/view/${id}`;
+            res.json({ 
+                url: viewUrl,
+                id: id
+            });
+        }
+    );
 });
 
 const PORT = process.env.PORT || 3000;
