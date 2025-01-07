@@ -295,7 +295,10 @@ async function processCodeBlock(node) {
     const code = detector.extractCode(node);
     if (!code) return;
 
-    if (!detector.isHTML(code) && !detector.isMermaid(code)) {
+    const isHTML = detector.isHTML(code);
+    const isMermaid = detector.isMermaid(code);
+    const isSVG = detector.isSVG(code);
+    if (!isHTML && !isMermaid && !isSVG) {
         return;
     }
 

@@ -31,6 +31,15 @@ class CodeDetector {
             /^CustomLog/i,
             /^LoadModule/i
         ];
+
+        // Thêm pattern để nhận dạng SVG
+        this.svgPatterns = [
+            /<svg[^>]*>/i,
+            /<svg\s+xmlns=/i,
+            /<svg\s+width=/i,
+            /<svg\s+height=/i,
+            /<svg\s+viewBox=/i
+        ];
     }
 
     isHTML(text) {
@@ -41,17 +50,18 @@ class CodeDetector {
             return false;
         }
 
+        // Kiểm tra SVG trước khi kiểm tra HTML
+        if (this.isSVG(trimmed)) {
+            return false;
+        }
+
         // Kiểm tra HTML
         const hasHtmlIndicators = (
-            // Có DOCTYPE
             trimmed.toLowerCase().includes('<!doctype html') ||
-            // Hoặc có thẻ html
             trimmed.toLowerCase().includes('<html') ||
-            // Hoặc có các thẻ HTML phổ biến
             /<(div|span|p|a|img|table|form|input|button|h[1-6])\b/i.test(trimmed)
         );
 
-        // Kiểm tra cấu trúc thẻ HTML cơ bản
         const hasHtmlStructure = (
             trimmed.startsWith('<') && 
             trimmed.includes('>') && 
@@ -79,6 +89,47 @@ class CodeDetector {
         return this.configPatterns.some(pattern => pattern.test(text));
     }
 
+    isSVG(text) {
+        const trimmed = text.trim();
+        
+        // Kiểm tra xem có phải là config file không
+        if (this.isConfigFile(trimmed)) {
+            return false;
+        }
+
+        // Kiểm tra có start với <svg và end với </svg>
+        const hasSVGTags = trimmed.startsWith('<svg') && trimmed.endsWith('</svg>');
+        
+        // Kiểm tra các pattern đặc trưng của SVG
+        const hasSVGPatterns = this.svgPatterns.some(pattern => pattern.test(trimmed));
+
+        // Sửa lại logic kiểm tra tính hợp lệ của SVG
+        const isValidSVG = (
+            hasSVGTags && 
+            hasSVGPatterns &&
+            // Sửa lại điều kiện này - điều kiện cũ có lỗi logic
+            (trimmed.indexOf('<svg') < trimmed.lastIndexOf('</svg>'))
+        );
+
+        // Đơn giản hóa điều kiện kiểm tra SVG hoàn chỉnh
+        const isCompleteSVG = (
+            isValidSVG &&
+            // Đếm số lượng dấu < và > phải bằng nhau
+            (trimmed.match(/</g) || []).length === (trimmed.match(/>/g) || []).length
+        );
+
+        // Thêm log để debug
+        console.log('SVG Check:', {
+            text: trimmed.substring(0, 100),
+            hasSVGTags,
+            hasSVGPatterns,
+            isValidSVG,
+            isCompleteSVG
+        });
+
+        return isCompleteSVG;
+    }
+
     isCodeBlock(node) {
         // Bỏ qua các elements có class hoặc data attribute liên quan đến config
         const classAndAttrs = (node.className || '') + ' ' + (node.getAttribute('data-language') || '');
@@ -91,15 +142,44 @@ class CodeDetector {
             node.className.includes('snippet')) {
             
             const text = node.textContent.trim();
-            return this.isHTML(text) || this.isMermaid(text);
+            
+            // Thêm log để debug
+            console.log('Checking code block:', {
+                isSVG: this.isSVG(text),
+                isHTML: this.isHTML(text),
+                isMermaid: this.isMermaid(text),
+                preview: text.substring(0, 100)
+            });
+
+            // Kiểm tra SVG trước, sau đó mới đến HTML và Mermaid
+            return this.isSVG(text) || this.isHTML(text) || this.isMermaid(text);
         }
         return false;
     }
 
     extractCode(node) {
         let code = node.textContent.trim();
+        
         // Loại bỏ các dòng copy button hoặc language indicator
-        code = code.replace(/^(Copy code|Copy to clipboard|javascript|html|css)$/gm, '').trim();
+        code = code.replace(/^(Copy code|Copy to clipboard|javascript|html|css|svg|xml|Copy XML|XML|xmlCopy code)$/gm, '').trim();
+        code = code.replace("xmlCopy code",'');
+        // Nếu là SVG, đảm bảo lấy toàn bộ nội dung SVG và loại bỏ comments XML
+        if (this.isSVG(code)) {
+            // Loại bỏ XML comments trước khi extract SVG
+            code = code.replace(/<!--[\s\S]*?-->/g, '');
+            
+            const svgStart = code.indexOf('<svg');
+            const svgEnd = code.lastIndexOf('</svg>') + 6;
+            if (svgStart >= 0 && svgEnd > svgStart) {
+                code = code.substring(svgStart, svgEnd);
+            }
+            
+            // Clean up khoảng trắng thừa
+            code = code.replace(/\s+/g, ' ')
+                      .replace(/>\s+</g, '><')
+                      .trim();
+        }
+        
         return code;
     }
 
