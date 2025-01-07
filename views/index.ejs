@@ -13,15 +13,10 @@
         <div class="row">
             <div class="col-md-6">
                 <div class="mb-3">
-                    <select class="form-select" id="codeType" onchange="toggleEditor()">
-                        <option value="combined">HTML + CSS + JS</option>
-                        <option value="mermaid">Mermaid</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <div id="htmlCssJsEditor">
-                        <textarea class="form-control" id="codeInput" rows="15" placeholder="Nhập code HTML đầy đủ...
-Ví dụ:
+                    <textarea class="form-control" id="codeInput" rows="15" 
+                        placeholder="Nhập code HTML, CSS, JavaScript hoặc Mermaid...
+
+Ví dụ HTML/CSS/JS:
 <!DOCTYPE html>
 <html>
 <head>
@@ -35,21 +30,13 @@ Ví dụ:
         // JavaScript ở đây
     </script>
 </body>
-</html>"></textarea>
-                    </div>
-                    <div id="mermaidEditor" style="display: none;">
-                        <textarea class="form-control" id="mermaidInput" rows="10" placeholder="Nhập mã Mermaid..."></textarea>
-                        <div class="mt-2">
-                            <small class="text-muted">
-                                Ví dụ Mermaid:
-                                <pre>graph TD;
-    A-->B;
-    A-->C;
-    B-->D;
-    C-->D;</pre>
-                            </small>
-                        </div>
-                    </div>
+</html>
+
+Hoặc Mermaid:
+graph TD
+    A[Client] -->|HTTP Request| B[Load Balancer]
+    B --> C[Server1]
+    B --> D[Server2]"></textarea>
                 </div>
                 <button class="btn btn-primary" onclick="renderCode()">Render</button>
             </div>
@@ -60,32 +47,9 @@ Ví dụ:
     </div>
 
     <script>
-        mermaid.initialize({ startOnLoad: true });
-
-        function toggleEditor() {
-            const type = document.getElementById('codeType').value;
-            const htmlCssJsEditor = document.getElementById('htmlCssJsEditor');
-            const mermaidEditor = document.getElementById('mermaidEditor');
-            
-            if (type === 'mermaid') {
-                htmlCssJsEditor.style.display = 'none';
-                mermaidEditor.style.display = 'block';
-            } else {
-                htmlCssJsEditor.style.display = 'block';
-                mermaidEditor.style.display = 'none';
-            }
-        }
-
         async function renderCode() {
-            const type = document.getElementById('codeType').value;
+            const code = document.getElementById('codeInput').value;
             const output = document.getElementById('output');
-            
-            let code;
-            if (type === 'mermaid') {
-                code = document.getElementById('mermaidInput').value;
-            } else {
-                code = document.getElementById('codeInput').value;
-            }
 
             // Lưu vào database
             const response = await fetch('/render', {
@@ -93,34 +57,22 @@ Ví dụ:
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ code, type })
+                body: JSON.stringify({ code })
             });
             const data = await response.json();
 
             // Clear previous output
             output.innerHTML = '';
 
-            // Render code based on type
-            if (type === 'mermaid') {
-                // Render Mermaid diagram
-                const mermaidDiv = document.createElement('div');
-                mermaidDiv.className = 'mermaid';
-                mermaidDiv.textContent = code;
-                output.appendChild(mermaidDiv);
-                mermaid.init();
-            } else {
-                // Render combined HTML/CSS/JS
-                const iframe = document.createElement('iframe');
-                iframe.style.width = '100%';
-                iframe.style.height = '400px';
-                iframe.style.border = 'none';
-                output.appendChild(iframe);
+            // Create iframe for output
+            const iframe = document.createElement('iframe');
+            iframe.style.width = '100%';
+            iframe.style.height = '400px';
+            iframe.style.border = 'none';
+            output.appendChild(iframe);
 
-                const iframeDoc = iframe.contentWindow.document;
-                iframeDoc.open();
-                iframeDoc.write(code);
-                iframeDoc.close();
-            }
+            // Load content in iframe
+            iframe.src = `/render-content/${data.id}`;
 
             // Hiển thị link để xem lại
             const viewLink = document.createElement('div');

@@ -16,8 +16,31 @@ app.get('/', (req, res) => {
     res.render('index');
 });
 
+// Hàm detect loại content
+function detectContentType(code) {
+    // Kiểm tra Mermaid
+    const mermaidKeywords = [
+        'graph ',
+        'flowchart ',
+        'sequenceDiagram',
+        'classDiagram',
+        'stateDiagram',
+        'gantt',
+        'pie',
+        'gitGraph'
+    ];
+    
+    if (mermaidKeywords.some(keyword => code.trim().startsWith(keyword))) {
+        return 'mermaid';
+    }
+    
+    // Mặc định là HTML/CSS/JS
+    return 'combined';
+}
+
 app.post('/render', (req, res) => {
-    const { code, type } = req.body;
+    const { code } = req.body;
+    const type = detectContentType(code);
     const id = uuidv4();
     
     db.run('INSERT INTO renders (id, input_code, type) VALUES (?, ?, ?)',
@@ -61,7 +84,9 @@ app.get('/render-content/:id', (req, res) => {
             return;
         }
 
-        if (render.type === 'mermaid') {
+        const type = detectContentType(render.input_code);
+
+        if (type === 'mermaid') {
             res.send(`
                 <!DOCTYPE html>
                 <html>
@@ -101,7 +126,6 @@ app.get('/render-content/:id', (req, res) => {
                         });
                         
                         window.addEventListener('load', function() {
-                            // Đảm bảo Mermaid được render sau khi trang load
                             mermaid.init(undefined, '.mermaid');
                         });
                     </script>
@@ -109,7 +133,7 @@ app.get('/render-content/:id', (req, res) => {
                 </html>
             `);
         } else {
-            // Nếu code không có DOCTYPE, wrap nó trong template HTML
+            // Xử lý HTML/CSS/JS
             if (!render.input_code.includes('<!DOCTYPE')) {
                 res.send(`
                     <!DOCTYPE html>
@@ -131,7 +155,6 @@ app.get('/render-content/:id', (req, res) => {
                     </html>
                 `);
             } else {
-                // Nếu có DOCTYPE, trả về nguyên bản
                 res.send(render.input_code);
             }
         }
