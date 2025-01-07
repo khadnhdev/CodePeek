@@ -48,6 +48,73 @@ app.get('/view/:id', (req, res) => {
     });
 });
 
+app.get('/render-content/:id', (req, res) => {
+    const { id } = req.params;
+    
+    db.get('SELECT * FROM renders WHERE id = ?', [id], (err, render) => {
+        if (err) {
+            res.status(500).send('Database error');
+            return;
+        }
+        if (!render) {
+            res.status(404).send('Not found');
+            return;
+        }
+
+        if (render.type === 'mermaid') {
+            res.send(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+                    <style>
+                        body {
+                            margin: 0;
+                            padding: 16px;
+                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="mermaid">${render.input_code}</div>
+                    <script>
+                        mermaid.initialize({ startOnLoad: true });
+                    </script>
+                </body>
+                </html>
+            `);
+        } else {
+            // Nếu code không có DOCTYPE, wrap nó trong template HTML
+            if (!render.input_code.includes('<!DOCTYPE')) {
+                res.send(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <style>
+                            body {
+                                margin: 0;
+                                padding: 16px;
+                                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        ${render.input_code}
+                    </body>
+                    </html>
+                `);
+            } else {
+                // Nếu có DOCTYPE, trả về nguyên bản
+                res.send(render.input_code);
+            }
+        }
+    });
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
