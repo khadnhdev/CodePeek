@@ -4,6 +4,35 @@ const detector = new CodeDetector();
 let renderHistory = [];
 let currentPreviewContainer = null;
 
+// Thêm biến để track trạng thái render
+let renderEnabled = true;
+
+// Load initial state
+chrome.storage.local.get(['renderEnabled'], (result) => {
+    // Nếu chưa có giá trị trong storage, giữ nguyên true
+    renderEnabled = result.renderEnabled === undefined ? true : result.renderEnabled;
+    
+    // Nếu đang tắt và có container, ẩn container
+    if (!renderEnabled && currentPreviewContainer) {
+        currentPreviewContainer.style.display = 'none';
+    }
+});
+
+// Listen for toggle messages
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'TOGGLE_RENDER') {
+        renderEnabled = message.enabled;
+        debugLog('Render toggled:', renderEnabled);
+        
+        // Hide/show container based on toggle
+        if (!renderEnabled && currentPreviewContainer) {
+            currentPreviewContainer.style.display = 'none';
+        } else if (renderEnabled && currentPreviewContainer) {
+            currentPreviewContainer.style.display = 'block';
+        }
+    }
+});
+
 function debugLog(message, data = '') {
     const styles = [
         'color: #00ff00',
@@ -206,6 +235,8 @@ function updateHistory(url, timestamp = new Date()) {
 }
 
 async function processCodeBlock(node) {
+    if (!renderEnabled) return;
+    
     const currentTime = Date.now();
     
     if (processedNodes.has(node)) {
