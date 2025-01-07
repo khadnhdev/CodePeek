@@ -280,9 +280,10 @@ const observer = new MutationObserver((mutations) => {
             if (targetNode.nodeType === Node.TEXT_NODE) {
                 targetNode = targetNode.parentNode;
             }
-            
-            if (targetNode.tagName === 'PRE' || targetNode.tagName === 'CODE') {
-                checkNodeChanges(targetNode);
+            if(targetNode.tagName) {
+                if (targetNode.tagName === 'PRE' || targetNode.tagName === 'CODE') {
+                    checkNodeChanges(targetNode);
+                }
             }
         }
     });
