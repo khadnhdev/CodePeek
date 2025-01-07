@@ -74,13 +74,36 @@ app.get('/render-content/:id', (req, res) => {
                             margin: 0;
                             padding: 16px;
                             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            min-height: 100vh;
+                        }
+                        #mermaid-container {
+                            width: 100%;
+                            max-width: 100%;
+                            overflow: auto;
                         }
                     </style>
                 </head>
                 <body>
-                    <div class="mermaid">${render.input_code}</div>
+                    <div id="mermaid-container">
+                        <pre class="mermaid">
+                            ${render.input_code}
+                        </pre>
+                    </div>
                     <script>
-                        mermaid.initialize({ startOnLoad: true });
+                        mermaid.initialize({
+                            startOnLoad: true,
+                            theme: 'default',
+                            securityLevel: 'loose',
+                            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                        });
+                        
+                        window.addEventListener('load', function() {
+                            // Đảm bảo Mermaid được render sau khi trang load
+                            mermaid.init(undefined, '.mermaid');
+                        });
                     </script>
                 </body>
                 </html>
