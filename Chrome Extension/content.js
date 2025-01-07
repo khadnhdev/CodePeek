@@ -216,6 +216,11 @@ async function processCodeBlock(node) {
     const code = detector.extractCode(node);
     if (!code) return;
 
+    // Kiểm tra xem có phải HTML hoặc Mermaid không
+    if (!detector.isHTML(code) && !detector.isMermaid(code)) {
+        return; // Bỏ qua nếu không phải HTML hoặc Mermaid
+    }
+
     node.dataset.lastContent = code;
     
     chrome.runtime.sendMessage({
