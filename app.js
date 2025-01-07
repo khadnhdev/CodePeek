@@ -259,13 +259,51 @@ app.post('/api/render/:id/content', (req, res) => {
 
     const type = detectContentType(content);
     
-    db.run('UPDATE renders SET input_code = ?, type = ? WHERE id = ?',
-        [content, type, id],
+    // Tạo rendered_content mới
+    let rendered_content;
+    if (type === 'mermaid') {
+        rendered_content = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+                <script>mermaid.initialize({startOnLoad:true});</script>
+            </head>
+            <body>
+                <div class="mermaid">
+                    ${content}
+                </div>
+            </body>
+            </html>
+        `;
+    } else if (type === 'html') {
+        rendered_content = content;
+    } else {
+        rendered_content = `
+            <!DOCTYPE html>
+            <html>
+            <body>
+                ${content}
+            </body>
+            </html>
+        `;
+    }
+    
+    // Cập nhật cả input_code, type và rendered_content
+    db.run('UPDATE renders SET input_code = ?, type = ?, rendered_content = ? WHERE id = ?',
+        [content, type, rendered_content, id],
         (err) => {
             if (err) {
-                console.error('Error updating content:', err);
+                logger.error('Content Update Error', err);
                 return res.status(500).json({ error: 'Database error' });
             }
+            
+            logger.update('Content Updated', {
+                id,
+                type,
+                contentLength: content.length,
+                timestamp: new Date().toISOString()
+            });
             
             res.json({ 
                 success: true,
@@ -346,6 +384,100 @@ app.post('/api/render/:id/render', (req, res) => {
             }
         );
     });
+});
+
+// API để upsert render
+app.post('/api/render/upsert', (req, res) => {
+    const { content, id } = req.body;
+    
+    if (!content) {
+        logger.error('Validation Error', new Error('Content is required'));
+        return res.status(400).json({ error: 'Content is required' });
+    }
+
+    const type = detectContentType(content);
+    
+    // Tạo rendered_content
+    let rendered_content;
+    if (type === 'mermaid') {
+        rendered_content = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+                <script>mermaid.initialize({startOnLoad:true});</script>
+            </head>
+            <body>
+                <div class="mermaid">
+                    ${content}
+                </div>
+            </body>
+            </html>
+        `;
+    } else if (type === 'html') {
+        rendered_content = content;
+    } else {
+        rendered_content = `
+            <!DOCTYPE html>
+            <html>
+            <body>
+                ${content}
+            </body>
+            </html>
+        `;
+    }
+
+    if (id) {
+        // Update nếu có ID
+        db.run('UPDATE renders SET input_code = ?, type = ?, rendered_content = ? WHERE id = ?',
+            [content, type, rendered_content, id],
+            (err) => {
+                if (err) {
+                    logger.error('Update Error', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+
+                logger.update('Render Updated', {
+                    id,
+                    type,
+                    contentLength: content.length,
+                    timestamp: new Date().toISOString()
+                });
+
+                res.json({ 
+                    success: true,
+                    id,
+                    url: `${req.protocol}://${req.get('host')}/view/${id}`
+                });
+            }
+        );
+    } else {
+        // Create nếu không có ID
+        const newId = uuidv4();
+        db.run('INSERT INTO renders (id, input_code, type, rendered_content) VALUES (?, ?, ?, ?)',
+            [newId, content, type, rendered_content],
+            (err) => {
+                if (err) {
+                    logger.error('Create Error', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+
+                const viewUrl = `${req.protocol}://${req.get('host')}/view/${newId}`;
+                logger.create('Render Created', {
+                    id: newId,
+                    type,
+                    contentLength: content.length,
+                    url: viewUrl
+                });
+
+                res.json({ 
+                    success: true,
+                    id: newId,
+                    url: viewUrl
+                });
+            }
+        );
+    }
 });
 
 const PORT = process.env.PORT || 3000;

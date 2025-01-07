@@ -374,7 +374,7 @@
         .card {
             padding: 20px;
             border-radius: 8px;
-            background: #f8f9fa;
+            background: #f8fafc;
             border: 1px solid #e5e7eb;
         }
     </style>
@@ -388,73 +388,42 @@
 </body>
 </html>`;
 
-        // Thêm hàm để lưu và lấy lastRenderID từ localStorage
-        const getLastRenderID = () => localStorage.getItem('lastRenderID');
-        const setLastRenderID = (id) => localStorage.setItem('lastRenderID', id);
+        // Thay thế localStorage bằng biến trong memory
+        let currentRenderID = null;
 
         async function renderCode() {
-            const code = document.getElementById('codeInput').value || exampleCode;
-            document.getElementById('codeInput').value = code; // Đảm bảo textarea có nội dung
+            const code = document.getElementById('codeInput').value;
+            if (!code) return;
             
             const output = document.getElementById('output');
             const button = document.querySelector('.code-input button');
             const originalText = button.innerHTML;
-            const lastRenderID = getLastRenderID();
 
             try {
                 button.innerHTML = '<svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg> Processing...';
                 button.disabled = true;
 
-                let response;
-                if (lastRenderID) {
-                    // Nếu có ID cũ, thử update content trước
-                    response = await fetch(`/api/render/${lastRenderID}/content`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ content: code })
-                    });
-
-                    // Nếu ID không tồn tại hoặc có lỗi, tạo mới
-                    if (!response.ok) {
-                        response = await fetch('/api/render', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({ content: code })
-                        });
-                    }
-                } else {
-                    // Nếu không có ID cũ, tạo mới
-                    response = await fetch('/api/render', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ content: code })
-                    });
-                }
-
-                if (!response.ok) throw new Error('Failed to render code');
-
-                const data = await response.json();
-                
-                // Nếu là response từ create mới
-                if (data.id) {
-                    setLastRenderID(data.id);
-                }
-
-                const currentID = lastRenderID || data.id;
-
-                // Sau khi update/create content, gọi API render
-                await fetch(`/api/render/${currentID}/render`, {
-                    method: 'POST'
+                // Gọi API upsert
+                const response = await fetch('/api/render/upsert', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        content: code,
+                        id: currentRenderID 
+                    })
                 });
 
-                output.innerHTML = `<iframe src="/render-content/${currentID}"></iframe>`;
-                document.getElementById('newTabLink').href = data.url || `/view/${currentID}`;
+                if (!response.ok) {
+                    throw new Error('Failed to upsert render');
+                }
+
+                const data = await response.json();
+                currentRenderID = data.id;
+
+                output.innerHTML = `<iframe src="/render-content/${currentRenderID}"></iframe>`;
+                document.getElementById('newTabLink').href = data.url;
 
             } catch (error) {
                 console.error('Error:', error);
@@ -465,8 +434,11 @@
             }
         }
 
-        // Initial render sau khi page load
-        window.addEventListener('load', renderCode);
+        // Đợi DOM load xong và textarea có giá trị rồi mới render
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('codeInput').value = exampleCode;
+            renderCode();
+        });
     </script>
 </body>
 </html> 
