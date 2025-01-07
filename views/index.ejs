@@ -358,7 +358,7 @@
     </div>
 
     <script>
-        // Add example code
+        // Thêm example code mặc định
         const exampleCode = `<!DOCTYPE html>
 <html>
 <head>
@@ -388,31 +388,73 @@
 </body>
 </html>`;
 
-        document.getElementById('codeInput').value = exampleCode;
+        // Thêm hàm để lưu và lấy lastRenderID từ localStorage
+        const getLastRenderID = () => localStorage.getItem('lastRenderID');
+        const setLastRenderID = (id) => localStorage.setItem('lastRenderID', id);
 
         async function renderCode() {
-            const code = document.getElementById('codeInput').value;
+            const code = document.getElementById('codeInput').value || exampleCode;
+            document.getElementById('codeInput').value = code; // Đảm bảo textarea có nội dung
+            
             const output = document.getElementById('output');
             const button = document.querySelector('.code-input button');
             const originalText = button.innerHTML;
+            const lastRenderID = getLastRenderID();
 
             try {
                 button.innerHTML = '<svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg> Processing...';
                 button.disabled = true;
 
-                const response = await fetch('/render', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ code })
-                });
+                let response;
+                if (lastRenderID) {
+                    // Nếu có ID cũ, thử update content trước
+                    response = await fetch(`/api/render/${lastRenderID}/content`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ content: code })
+                    });
+
+                    // Nếu ID không tồn tại hoặc có lỗi, tạo mới
+                    if (!response.ok) {
+                        response = await fetch('/api/render', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ content: code })
+                        });
+                    }
+                } else {
+                    // Nếu không có ID cũ, tạo mới
+                    response = await fetch('/api/render', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ content: code })
+                    });
+                }
 
                 if (!response.ok) throw new Error('Failed to render code');
 
                 const data = await response.json();
-                output.innerHTML = `<iframe src="/render-content/${data.id}"></iframe>`;
-                document.getElementById('newTabLink').href = `/view/${data.id}`;
+                
+                // Nếu là response từ create mới
+                if (data.id) {
+                    setLastRenderID(data.id);
+                }
+
+                const currentID = lastRenderID || data.id;
+
+                // Sau khi update/create content, gọi API render
+                await fetch(`/api/render/${currentID}/render`, {
+                    method: 'POST'
+                });
+
+                output.innerHTML = `<iframe src="/render-content/${currentID}"></iframe>`;
+                document.getElementById('newTabLink').href = data.url || `/view/${currentID}`;
 
             } catch (error) {
                 console.error('Error:', error);
@@ -423,8 +465,8 @@
             }
         }
 
-        // Initial render
-        renderCode();
+        // Initial render sau khi page load
+        window.addEventListener('load', renderCode);
     </script>
 </body>
 </html> 

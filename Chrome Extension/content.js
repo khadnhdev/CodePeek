@@ -246,14 +246,45 @@ async function processCodeBlock(node) {
     });
 }
 
-// Hàm kiểm tra sự thay đổi của node
+// Thêm hàm mới để cập nhật content
+async function updateRenderContent(id, code) {
+    try {
+        const response = await fetch(`${RENDER_API.replace('/render', '')}/render/${id}/content`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ content: code })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to update content');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error updating content:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Sửa lại hàm checkNodeChanges
 function checkNodeChanges(node) {
     if (!node || !node.textContent) return;
     
     const currentContent = detector.extractCode(node);
     const lastContent = node.dataset.lastContent;
+    const previewId = node.dataset.previewId;
 
-    if (currentContent !== lastContent) {
+    if (currentContent !== lastContent && previewId) {
+        // Nếu đã có previewId, update content trực tiếp
+        updateRenderContent(previewId, currentContent).then(response => {
+            if (response.success) {
+                node.dataset.lastContent = currentContent;
+            }
+        });
+    } else if (currentContent !== lastContent) {
+        // Nếu chưa có previewId, tạo render mới
         processCodeBlock(node);
     }
 }

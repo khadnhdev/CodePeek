@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const { v4: uuidv4 } = require('uuid');
 const db = require('./db/database');
+const logger = require('./utils/logger');
 
 const app = express();
 
@@ -10,6 +11,17 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(express.static('public'));
+
+// Middleware để disable cache cho tất cả các API routes
+app.use('/api', (req, res, next) => {
+    res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store'
+    });
+    next();
+});
 
 // Routes
 app.get('/', (req, res) => {
@@ -103,98 +115,16 @@ app.get('/view/:id', (req, res) => {
 });
 
 app.get('/render-content/:id', (req, res) => {
-    const { id } = req.params;
-    
-    db.get('SELECT * FROM renders WHERE id = ?', [id], (err, render) => {
+    db.get('SELECT rendered_content FROM renders WHERE id = ?', [req.params.id], (err, render) => {
         if (err) {
-            console.error('Database error:', err);
-            res.status(500).send('Database error');
-            return;
+            console.error('Error fetching render:', err);
+            return res.status(500).send('Database error');
         }
-        if (!render) {
-            console.log('Content not found:', id);
-            res.status(404).send('Not found');
-            return;
+        if (!render || !render.rendered_content) {
+            return res.status(404).send('Render not found');
         }
-
-        const type = detectContentType(render.input_code);
-        console.log('\nRendering content:', {
-            id: id,
-            type: type,
-            contentLength: render.input_code.length
-        });
-
-        if (type === 'mermaid') {
-            res.send(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-                    <style>
-                        body {
-                            margin: 0;
-                            padding: 16px;
-                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            min-height: 100vh;
-                        }
-                        #mermaid-container {
-                            width: 100%;
-                            max-width: 100%;
-                            overflow: auto;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div id="mermaid-container">
-                        <pre class="mermaid">
-                            ${render.input_code}
-                        </pre>
-                    </div>
-                    <script>
-                        mermaid.initialize({
-                            startOnLoad: true,
-                            theme: 'default',
-                            securityLevel: 'loose',
-                            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                        });
-                        
-                        window.addEventListener('load', function() {
-                            mermaid.init(undefined, '.mermaid');
-                        });
-                    </script>
-                </body>
-                </html>
-            `);
-        } else if (type === 'html') {
-            // Trả về nguyên bản nếu là HTML hoàn chỉnh
-            res.send(render.input_code);
-        } else {
-            // Wrap content trong template HTML nếu là combined
-            res.send(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <style>
-                        body {
-                            margin: 0;
-                            padding: 16px;
-                            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                        }
-                    </style>
-                </head>
-                <body>
-                    ${render.input_code}
-                </body>
-                </html>
-            `);
-        }
+        
+        res.send(render.rendered_content);
     });
 });
 
@@ -202,50 +132,220 @@ app.get('/render-content/:id', (req, res) => {
 app.post('/api/render', (req, res) => {
     const { content } = req.body;
     
-    // Log request
-    console.log('\n[API Render Request]', new Date().toISOString());
-    console.log('Content length:', content?.length || 0);
-    console.log('Content preview:', content?.substring(0, 100) + '...');
+    logger.create('New Render Request', {
+        timestamp: new Date().toISOString(),
+        contentLength: content?.length || 0,
+        type: detectContentType(content)
+    });
 
     if (!content) {
-        console.log('Error: Content is required');
+        logger.error('Validation Error', new Error('Content is required'));
         return res.status(400).json({ error: 'Content is required' });
     }
 
     const type = detectContentType(content);
     const id = uuidv4();
     
+    // Tạo rendered_content
+    let rendered_content;
+    if (type === 'mermaid') {
+        rendered_content = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+                <script>mermaid.initialize({startOnLoad:true});</script>
+            </head>
+            <body>
+                <div class="mermaid">
+                    ${content}
+                </div>
+            </body>
+            </html>
+        `;
+    } else if (type === 'html') {
+        rendered_content = content;
+    } else {
+        rendered_content = `
+            <!DOCTYPE html>
+            <html>
+            <body>
+                ${content}
+            </body>
+            </html>
+        `;
+    }
+    
     // Log detected type
     console.log('Detected type:', type);
     
-    db.run('INSERT INTO renders (id, input_code, type) VALUES (?, ?, ?)',
-        [id, content, type],
+    db.run('INSERT INTO renders (id, input_code, type, rendered_content) VALUES (?, ?, ?, ?)',
+        [id, content, type, rendered_content],
         (err) => {
             if (err) {
-                console.log('Database error:', err.message);
-                res.status(500).json({ error: err.message });
-                return;
+                logger.error('Database Error', err);
+                return res.status(500).json({ error: err.message });
             }
+            
             const viewUrl = `${req.protocol}://${req.get('host')}/view/${id}`;
-            
-            // Log success response
-            console.log('Success:', {
-                id: id,
-                url: viewUrl,
-                type: type
+            logger.create('Render Created', {
+                id,
+                type,
+                contentLength: content.length,
+                url: viewUrl
             });
             
-            res.json({ 
-                url: viewUrl,
-                id: id
-            });
+            res.json({ url: viewUrl, id: id });
         }
     );
+});
+
+// Tách riêng API để lấy thông tin render
+app.get('/api/render/:id', (req, res) => {
+    logger.update('Fetching Render', {
+        id: req.params.id,
+        timestamp: new Date().toISOString()
+    });
+
+    db.get('SELECT views, input_code FROM renders WHERE id = ?', [req.params.id], (err, render) => {
+        if (err) {
+            logger.error('Database Error', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (!render) {
+            logger.error('Not Found', new Error(`Render ${req.params.id} not found`));
+            return res.status(404).json({ error: 'Render not found' });
+        }
+        
+        const input_code = render.input_code ? render.input_code.toString() : '';
+        
+        logger.update('Render Fetched', {
+            id: req.params.id,
+            contentLength: input_code.length,
+            timestamp: new Date().toISOString()
+        });
+
+        res.json({ 
+            views: render.views,
+            input_code: input_code
+        });
+    });
+});
+
+// API riêng để tăng view count
+app.post('/api/render/:id/views', (req, res) => {
+    db.run('UPDATE renders SET views = views + 1 WHERE id = ?', [req.params.id], (err) => {
+        if (err) {
+            console.error('Error updating views:', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ success: true });
+    });
 });
 
 // Add privacy route
 app.get('/privacy', (req, res) => {
     res.render('privacy');
+});
+
+// Thêm API endpoint mới để cập nhật content
+app.post('/api/render/:id/content', (req, res) => {
+    const { content } = req.body;
+    const { id } = req.params;
+    
+    if (!content) {
+        return res.status(400).json({ error: 'Content is required' });
+    }
+
+    const type = detectContentType(content);
+    
+    db.run('UPDATE renders SET input_code = ?, type = ? WHERE id = ?',
+        [content, type, id],
+        (err) => {
+            if (err) {
+                console.error('Error updating content:', err);
+                return res.status(500).json({ error: 'Database error' });
+            }
+            
+            res.json({ 
+                success: true,
+                message: 'Content updated successfully'
+            });
+        }
+    );
+});
+
+// API để cập nhật render
+app.post('/api/render/:id/render', (req, res) => {
+    const { id } = req.params;
+    
+    logger.update('Updating Render', {
+        id,
+        timestamp: new Date().toISOString()
+    });
+
+    db.get('SELECT * FROM renders WHERE id = ?', [id], (err, render) => {
+        if (err) {
+            logger.error('Database Error', err);
+            return res.status(500).json({ error: 'Database error' });
+        }
+        if (!render) {
+            logger.error('Not Found', new Error(`Render ${id} not found`));
+            return res.status(404).json({ error: 'Render not found' });
+        }
+
+        // Tạo render mới dựa trên input_code và type
+        const type = detectContentType(render.input_code);
+        let content;
+        
+        if (type === 'mermaid') {
+            content = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+                    <script>mermaid.initialize({startOnLoad:true});</script>
+                </head>
+                <body>
+                    <div class="mermaid">
+                        ${render.input_code}
+                    </div>
+                </body>
+                </html>
+            `;
+        } else if (type === 'html') {
+            content = render.input_code;
+        } else {
+            content = `
+                <!DOCTYPE html>
+                <html>
+                <body>
+                    ${render.input_code}
+                </body>
+                </html>
+            `;
+        }
+
+        // Cập nhật rendered_content trong database
+        db.run('UPDATE renders SET rendered_content = ? WHERE id = ?',
+            [content, id],
+            (err) => {
+                if (err) {
+                    logger.error('Update Error', err);
+                    return res.status(500).json({ error: 'Database error' });
+                }
+                
+                logger.update('Render Updated', {
+                    id,
+                    type,
+                    contentLength: render.input_code.length,
+                    timestamp: new Date().toISOString()
+                });
+                
+                res.json({ success: true });
+            }
+        );
+    });
 });
 
 const PORT = process.env.PORT || 3000;

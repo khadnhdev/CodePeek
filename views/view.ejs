@@ -146,6 +146,45 @@
                 console.error('Failed to copy code:', err);
             });
         }
+
+        // Hàm để decode HTML entities
+        function decodeHtml(html) {
+            const txt = document.createElement('textarea');
+            txt.innerHTML = html;
+            return txt.value;
+        }
+
+        let currentViews = <%= render.views %>;
+        let currentContent = decodeHtml(`<%= render.input_code %>`);
+        
+        function checkUpdates() {
+            fetch(`/api/render/<%= render.id %>`)
+                .then(response => response.json())
+                .then(data => {
+                    const newContent = decodeHtml(data.input_code);
+                    if (newContent !== currentContent) {
+                        console.log('Content changed, updating render...');
+                        currentContent = newContent;
+                        
+                        // Gọi API để cập nhật render
+                        fetch(`/api/render/<%= render.id %>/render`, {
+                            method: 'POST'
+                        }).then(() => {
+                            // Sau khi render được cập nhật, refresh iframe
+                            const iframe = document.getElementById('renderFrame');
+                            iframe.src = iframe.src;
+                        });
+                    }
+                    
+                    if (data.views !== currentViews) {
+                        currentViews = data.views;
+                    }
+                })
+                .catch(error => console.error('Error checking updates:', error));
+        }
+
+        // Kiểm tra cập nhật mỗi 3 giây
+        setInterval(checkUpdates, 3000);
     </script>
 </body>
 </html> 

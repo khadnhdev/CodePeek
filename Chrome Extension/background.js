@@ -1,4 +1,5 @@
-const RENDER_API = 'https://live.jobsum.works/api/render';
+// const RENDER_API = 'https://live.jobsum.works/api';
+const RENDER_API = 'http://localhost:3000/api';
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'RENDER_CODE') {
@@ -9,7 +10,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function handleRenderCode({ code, nodeId }, sender, sendResponse) {
     try {
-        const response = await fetch(RENDER_API, {
+        const response = await fetch(`${RENDER_API}/render`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -23,7 +24,7 @@ async function handleRenderCode({ code, nodeId }, sender, sendResponse) {
         sendResponse({
             success: true,
             url: data.url,
-            previewId: nodeId
+            previewId: data.id
         });
     } catch (error) {
         console.error('Failed to render code:', error);
