@@ -1,40 +1,42 @@
 const chalk = require('chalk');
 
+function formatMessage(type, message, data = null) {
+    const timestamp = new Date().toISOString();
+    let logMessage = `${type} ${message}`;
+    if (data) {
+        if (typeof data === 'object') {
+            Object.entries(data).forEach(([key, value]) => {
+                logMessage += `\n› ${key}: ${value}`;
+            });
+        } else {
+            logMessage += `\n› ${data}`;
+        }
+    }
+    return logMessage;
+}
+
 const logger = {
-    create: (title, data) => {
-        console.log('\n' + chalk.bgGreen.black(' CREATE ') + ' ' + chalk.green(title));
-        if (data) {
-            Object.entries(data).forEach(([key, value]) => {
-                console.log(chalk.green('›') + ' ' + chalk.bold(key + ':'), 
-                    typeof value === 'string' && value.length > 100 
-                        ? value.substring(0, 100) + '...' 
-                        : value
-                );
-            });
+    info: (message, data = null) => {
+        console.log(chalk.blue(formatMessage(' INFO ', message, data)));
+    },
+
+    error: (message, error) => {
+        console.error(chalk.red(formatMessage(' ERROR ', message)));
+        if (error && error.stack) {
+            console.error(chalk.red(error.stack));
         }
     },
 
-    update: (title, data) => {
-        console.log('\n' + chalk.bgBlue.black(' UPDATE ') + ' ' + chalk.blue(title));
-        if (data) {
-            Object.entries(data).forEach(([key, value]) => {
-                console.log(chalk.blue('›') + ' ' + chalk.bold(key + ':'), 
-                    typeof value === 'string' && value.length > 100 
-                        ? value.substring(0, 100) + '...' 
-                        : value
-                );
-            });
-        }
+    create: (message, data = null) => {
+        console.log(chalk.green(formatMessage('CREATE ', message, data)));
     },
 
-    error: (title, error) => {
-        console.log('\n' + chalk.bgRed.white(' ERROR ') + ' ' + chalk.red(title));
-        if (error) {
-            console.log(chalk.red('›') + ' ' + error.message);
-            if (error.stack) {
-                console.log(chalk.red('›') + ' Stack:', error.stack);
-            }
-        }
+    update: (message, data = null) => {
+        console.log(chalk.yellow(formatMessage('UPDATE ', message, data)));
+    },
+
+    debug: (message, data = null) => {
+        console.log(chalk.gray(formatMessage(' DEBUG ', message, data)));
     }
 };
 

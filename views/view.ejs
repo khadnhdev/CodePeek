@@ -80,6 +80,7 @@
             padding: 4px 8px;
         }
     </style>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
     <div class="header">
@@ -154,37 +155,71 @@
             return txt.value;
         }
 
+        // Hàm so sánh nội dung chi tiết
+        function isContentEqual(oldContent, newContent) {
+            // Chuẩn hóa content bằng cách:
+            const normalize = (content) => {
+                return content
+                    .trim() // Bỏ khoảng trắng đầu cuối
+                    .replace(/\s+/g, ' ') // Gộp nhiều khoảng trắng thành 1
+                    .replace(/\n\s*/g, '\n') // Chuẩn hóa xuống dòng
+                    .replace(/>\s+</g, '><'); // Bỏ khoảng trắng giữa các tags
+            };
+
+            return normalize(oldContent) === normalize(newContent);
+        }
+
         let currentViews = <%= render.views %>;
         let currentContent = decodeHtml(`<%= render.input_code %>`);
         
-        function checkUpdates() {
-            fetch(`/api/render/<%= render.id %>`)
-                .then(response => response.json())
-                .then(data => {
-                    const newContent = decodeHtml(data.input_code);
-                    if (newContent !== currentContent) {
-                        console.log('Content changed, updating render...');
-                        currentContent = newContent;
-                        
-                        // Gọi API để cập nhật render
-                        fetch(`/api/render/<%= render.id %>/render`, {
-                            method: 'POST'
-                        }).then(() => {
-                            // Sau khi render được cập nhật, refresh iframe
-                            const iframe = document.getElementById('renderFrame');
-                            iframe.src = iframe.src;
-                        });
-                    }
-                    
-                    if (data.views !== currentViews) {
-                        currentViews = data.views;
-                    }
-                })
-                .catch(error => console.error('Error checking updates:', error));
-        }
+        // Khởi tạo socket connection
+        const socket = io();
+        
+        // Join render room
+        socket.emit('join-render', '<%= render.id %>');
+        
+        // Listen for updates
+        socket.on('render-updated', (data) => {
+            console.log('Received update:', data);
+            
+            const newContent = decodeHtml(data.content);
 
-        // Kiểm tra cập nhật mỗi 3 giây
-        setInterval(checkUpdates, 3000);
+            // So sánh kỹ nội dung cũ và mới
+            if (!isContentEqual(currentContent, newContent)) {
+                console.log('Content changed, updating render...');
+                
+                // Cập nhật code preview nếu đang ở tab source
+                const codeElement = document.querySelector('.code-container code');
+                if (codeElement) {
+                    codeElement.textContent = newContent;
+                    Prism.highlightElement(codeElement);
+                }
+
+                // Cập nhật iframe
+                const iframe = document.getElementById('renderFrame');
+                iframe.src = iframe.src;
+
+                // Lưu content mới
+                currentContent = newContent;
+            } else {
+                console.log('Content unchanged, skipping update');
+            }
+        });
+
+        // Handle socket connection errors
+        socket.on('connect_error', (error) => {
+            console.error('Socket connection error:', error);
+        });
+
+        socket.on('disconnect', (reason) => {
+            console.log('Socket disconnected:', reason);
+        });
+
+        socket.on('reconnect', (attemptNumber) => {
+            console.log('Socket reconnected after', attemptNumber, 'attempts');
+            // Rejoin render room after reconnection
+            socket.emit('join-render', '<%= render.id %>');
+        });
     </script>
 </body>
 </html> 

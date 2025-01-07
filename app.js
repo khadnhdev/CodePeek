@@ -1,10 +1,14 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const { v4: uuidv4 } = require('uuid');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
 const db = require('./db/database');
 const logger = require('./utils/logger');
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer);
 
 // Middleware
 app.set('view engine', 'ejs');
@@ -386,7 +390,22 @@ app.post('/api/render/:id/render', (req, res) => {
     });
 });
 
-// API để upsert render
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+    logger.info('Client connected');
+    
+    // Client joins a render room
+    socket.on('join-render', (renderId) => {
+        socket.join(`render:${renderId}`);
+        logger.info(`Client joined render:${renderId}`);
+    });
+
+    socket.on('disconnect', () => {
+        logger.info('Client disconnected');
+    });
+});
+
+// Sửa lại route render/upsert để emit event khi có update
 app.post('/api/render/upsert', (req, res) => {
     const { content, id } = req.body;
     
@@ -437,11 +456,11 @@ app.post('/api/render/upsert', (req, res) => {
                     return res.status(500).json({ error: 'Database error' });
                 }
 
-                logger.update('Render Updated', {
+                // Emit event update cho room tương ứng
+                io.to(`render:${id}`).emit('render-updated', {
                     id,
-                    type,
-                    contentLength: content.length,
-                    timestamp: new Date().toISOString()
+                    content,
+                    rendered_content
                 });
 
                 res.json({ 
@@ -480,7 +499,8 @@ app.post('/api/render/upsert', (req, res) => {
     }
 });
 
+// Thay đổi listen để sử dụng httpServer
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 }); 
