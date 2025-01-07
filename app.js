@@ -34,55 +34,30 @@ app.get('/', (req, res) => {
 });
 
 // Hàm detect loại content
-function detectContentType(code) {
-    if (!code || typeof code !== 'string') return 'unknown';
+function detectContentType(content) {
+    const trimmed = content.trim().toLowerCase();
     
-    const trimmedCode = code.trim();
-    
-    // Kiểm tra Mermaid
-    const mermaidKeywords = [
-        'graph ',
-        'flowchart ',
-        'sequenceDiagram',
-        'classDiagram',
-        'stateDiagram',
-        'gantt',
-        'pie',
-        'gitGraph'
-    ];
-
-    // Kiểm tra HTML
-    const isHTML = (
-        // Có DOCTYPE
-        trimmedCode.toLowerCase().includes('<!doctype html') ||
-        // Hoặc có thẻ html
-        trimmedCode.toLowerCase().includes('<html') ||
-        // Hoặc có cấu trúc thẻ HTML cơ bản
-        (trimmedCode.startsWith('<') && 
-         trimmedCode.includes('>') && 
-         (trimmedCode.includes('</') || trimmedCode.includes('/>')))
-    );
-
-    // Kiểm tra Mermaid
-    const isMermaid = mermaidKeywords.some(keyword => 
-        trimmedCode.toLowerCase().startsWith(keyword.toLowerCase())
-    );
-
-    // Log để debug
-    console.log('\nContent Detection:');
-    console.log('Content preview:', trimmedCode.substring(0, 100));
-    console.log('Is HTML:', isHTML);
-    console.log('Is Mermaid:', isMermaid);
-    
-    // Quyết định loại content
-    if (isMermaid) {
-        return 'mermaid';
-    } else if (isHTML) {
-        return 'html';
-    } else {
-        // Nếu không phải cả hai, wrap trong HTML
-        return 'combined';
+    // Check SVG first
+    if (content.trim().startsWith('<svg') && content.trim().endsWith('</svg>')) {
+        return 'svg';
     }
+    
+    // Check Mermaid
+    if (trimmed.startsWith('graph ') || 
+        trimmed.startsWith('sequencediagram') ||
+        trimmed.startsWith('classdiagram') ||
+        trimmed.startsWith('gantt') ||
+        trimmed.startsWith('pie') ||
+        trimmed.startsWith('flowchart')) {
+        return 'mermaid';
+    }
+    
+    // Check HTML
+    if (content.trim().startsWith('<') && content.trim().endsWith('>')) {
+        return 'html';
+    }
+    
+    return 'text';
 }
 
 app.post('/render', (req, res) => {
@@ -418,7 +393,32 @@ app.post('/api/render/upsert', (req, res) => {
     
     // Tạo rendered_content
     let rendered_content;
-    if (type === 'mermaid') {
+    if (type === 'svg') {
+        rendered_content = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {
+                        margin: 0;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        background: white;
+                    }
+                    svg {
+                        max-width: 100%;
+                        height: auto;
+                    }
+                </style>
+            </head>
+            <body>
+                ${content}
+            </body>
+            </html>
+        `;
+    } else if (type === 'mermaid') {
         rendered_content = `
             <!DOCTYPE html>
             <html>
