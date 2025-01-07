@@ -15,9 +15,6 @@
         "128": "icons/icon128.png"
       }
     },
-    "permissions": [
-      "activeTab"
-    ],
     "host_permissions": [
       "https://live.jobsum.works/*",
       "http://localhost:3000/*",
