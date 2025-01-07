@@ -1,5 +1,6 @@
 const RECHECK_INTERVAL = 2000;
 const processedNodes = new Map();
+const processedContents = new Set();
 const detector = new CodeDetector();
 let renderHistory = [];
 let currentPreviewContainer = null;
@@ -234,6 +235,53 @@ function updateHistory(url, timestamp = new Date()) {
     }
 }
 
+// Thêm class để quản lý code blocks
+class CodeBlockManager {
+    constructor() {
+        this.blocks = [];
+    }
+
+    // Thêm code block mới
+    add(code, node, hash) {
+        this.blocks.push({
+            code,
+            hash,
+            node,
+            timestamp: Date.now()
+        });
+    }
+
+    // Kiểm tra code block đã tồn tại
+    exists(hash) {
+        return this.blocks.some(block => block.hash === hash);
+    }
+
+    // Xóa tất cả blocks
+    clear() {
+        this.blocks = [];
+    }
+
+    // Lấy block theo hash
+    getByHash(hash) {
+        return this.blocks.find(block => block.hash === hash);
+    }
+
+    // Debug info
+    getDebugInfo() {
+        return {
+            totalBlocks: this.blocks.length,
+            blocks: this.blocks.map(b => ({
+                hash: b.hash,
+                preview: b.code.substring(0, 50) + '...',
+                timestamp: new Date(b.timestamp).toISOString()
+            }))
+        };
+    }
+}
+
+// Khởi tạo manager
+const codeBlockManager = new CodeBlockManager();
+
 async function processCodeBlock(node) {
     if (!renderEnabled) return;
     
@@ -251,30 +299,39 @@ async function processCodeBlock(node) {
         return;
     }
 
-    debugLog('Processing code block:', { 
+    const contentHash = hashCode(code);
+
+    // Kiểm tra trong manager
+    if (codeBlockManager.exists(contentHash)) {
+        debugLog('Code block already exists:', {
+            hash: contentHash,
+            preview: code.substring(0, 50) + '...'
+        });
+        return;
+    }
+
+    debugLog('Processing new code block:', { 
         hasContainer: !!currentPreviewContainer,
-        code: code.substring(0, 100) + '...' 
+        contentHash,
+        preview: code.substring(0, 50) + '...'
     });
 
     node.dataset.lastContent = code;
+    node.dataset.contentHash = contentHash;
     
-    // Lấy ID từ container hiện tại nếu có
     const previewId = currentPreviewContainer?.dataset.previewId;
-    debugLog('Current preview ID:', previewId);
 
     // Gọi API upsert
     chrome.runtime.sendMessage({
         type: 'RENDER_CODE',
         payload: { 
             code,
-            // Chỉ gửi ID nếu đã có container
             nodeId: previewId || undefined
         }
     }, response => {
         if (response && response.success) {
             debugLog('Upsert response:', response);
 
-            // Chỉ tạo container nếu chưa có
             if (!currentPreviewContainer) {
                 debugLog('Creating new container');
                 const { container, iframe } = createPreviewContainer();
@@ -282,26 +339,69 @@ async function processCodeBlock(node) {
                 document.body.appendChild(container);
                 currentPreviewContainer = container;
                 container.dataset.previewId = response.previewId;
-                updateHistory(response.url);
             }
 
+            // Thêm vào manager
+            codeBlockManager.add(code, node, contentHash);
             processedNodes.set(node, currentTime);
+
+            debugLog('Code blocks status:', codeBlockManager.getDebugInfo());
         }
     });
 }
 
-// Sửa lại hàm checkNodeChanges để thêm logs
+// Hàm tạo hash từ string
+function hashCode(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString();
+}
+
+// Sửa lại hàm checkNodeChanges
 function checkNodeChanges(node) {
     if (!node || !node.textContent) return;
     
     const currentContent = detector.extractCode(node);
-    const lastContent = node.dataset.lastContent;
+    if (!currentContent) return;
 
-    if (currentContent !== lastContent && currentPreviewContainer) {
-        debugLog('Content changed, current container ID:', currentPreviewContainer.dataset.previewId);
+    const currentHash = hashCode(currentContent);
+
+    // Kiểm tra xem nội dung này đã được xử lý chưa
+    const existingBlock = codeBlockManager.getByHash(currentHash);
+    if (existingBlock) {
+        // Nội dung này đã được xử lý, cập nhật dataset của node
+        node.dataset.contentHash = currentHash;
         node.dataset.lastContent = currentContent;
+        return;
+    }
+
+    // So sánh với nội dung cuối cùng được lưu trong node
+    const lastContent = node.dataset.lastContent;
+    if (!lastContent || !isContentEqual(lastContent, currentContent)) {
+        debugLog('Content changed:', {
+            nodeId: node.dataset.nodeId,
+            preview: currentContent.substring(0, 50) + '...'
+        });
         processCodeBlock(node);
     }
+}
+
+// Hàm so sánh nội dung chi tiết
+function isContentEqual(oldContent, newContent) {
+    // Chuẩn hóa content bằng cách:
+    const normalize = (content) => {
+        return content
+            .trim() // Bỏ khoảng trắng đầu cuối
+            .replace(/\s+/g, ' ') // Gộp nhiều khoảng trắng thành 1
+            .replace(/\n\s*/g, '\n') // Chuẩn hóa xuống dòng
+            .replace(/>\s+</g, '><'); // Bỏ khoảng trắng giữa các tags
+    };
+
+    return normalize(oldContent) === normalize(newContent);
 }
 
 // Theo dõi các thay đổi trong DOM
@@ -403,15 +503,14 @@ const debouncedScan = debounce(scanPage, 1000);
 
 // Xử lý khi trang thay đổi nội dung động
 const pageObserver = new MutationObserver((mutations) => {
-    // Kiểm tra URL thay đổi
     const currentUrl = location.href;
     if (currentUrl !== lastUrl) {
         lastUrl = currentUrl;
-        debugLog('URL changed, rescanning page...');
+        debugLog('URL changed, resetting code blocks');
+        codeBlockManager.clear();
+        processedContents.clear();
         debouncedScan();
-        return;
     }
-
     // Kiểm tra các thay đổi DOM quan trọng
     const shouldRescan = mutations.some(mutation => {
         // Thay đổi lớn trong DOM
