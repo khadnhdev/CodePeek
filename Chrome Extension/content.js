@@ -4,6 +4,23 @@ const detector = new CodeDetector();
 let renderHistory = [];
 let currentPreviewContainer = null;
 
+function debugLog(message, data = '') {
+    const styles = [
+        'color: #00ff00',
+        'background: #000',
+        'font-size: 14px',
+        'font-weight: bold',
+        'padding: 4px 8px',
+        'border-radius: 4px'
+    ].join(';');
+
+    if (data) {
+        console.log(`%c[Preview Debug] ${message}`, styles, data);
+    } else {
+        console.log(`%c[Preview Debug] ${message}`, styles);
+    }
+}
+
 function createPreviewContainer() {
     const container = document.createElement('div');
     container.id = 'code-preview-container';
@@ -214,77 +231,59 @@ async function processCodeBlock(node) {
     const code = detector.extractCode(node);
     if (!code) return;
 
-    // Kiểm tra xem có phải HTML hoặc Mermaid không
     if (!detector.isHTML(code) && !detector.isMermaid(code)) {
-        return; // Bỏ qua nếu không phải HTML hoặc Mermaid
+        return;
     }
+
+    debugLog('Processing code block:', { 
+        hasContainer: !!currentPreviewContainer,
+        code: code.substring(0, 100) + '...' 
+    });
 
     node.dataset.lastContent = code;
     
+    // Lấy ID từ container hiện tại nếu có
+    const previewId = currentPreviewContainer?.dataset.previewId;
+    debugLog('Current preview ID:', previewId);
+
+    // Gọi API upsert
     chrome.runtime.sendMessage({
         type: 'RENDER_CODE',
         payload: { 
             code,
-            nodeId: node.dataset.previewId || crypto.randomUUID()
+            // Chỉ gửi ID nếu đã có container
+            nodeId: previewId || undefined
         }
     }, response => {
         if (response && response.success) {
+            debugLog('Upsert response:', response);
+
+            // Chỉ tạo container nếu chưa có
             if (!currentPreviewContainer) {
+                debugLog('Creating new container');
                 const { container, iframe } = createPreviewContainer();
+                iframe.src = response.url;
                 document.body.appendChild(container);
                 currentPreviewContainer = container;
-                iframe.src = response.url;
-            } else {
-                const iframe = currentPreviewContainer.querySelector('iframe');
-                if (iframe) iframe.src = response.url;
+                container.dataset.previewId = response.previewId;
+                updateHistory(response.url);
             }
 
-            updateHistory(response.url);
-            node.dataset.previewId = response.previewId;
             processedNodes.set(node, currentTime);
         }
     });
 }
 
-// Thêm hàm mới để cập nhật content
-async function updateRenderContent(id, code) {
-    try {
-        const response = await fetch(`${RENDER_API.replace('/render', '')}/render/${id}/content`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ content: code })
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to update content');
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('Error updating content:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// Sửa lại hàm checkNodeChanges
+// Sửa lại hàm checkNodeChanges để thêm logs
 function checkNodeChanges(node) {
     if (!node || !node.textContent) return;
     
     const currentContent = detector.extractCode(node);
     const lastContent = node.dataset.lastContent;
-    const previewId = node.dataset.previewId;
 
-    if (currentContent !== lastContent && previewId) {
-        // Nếu đã có previewId, update content trực tiếp
-        updateRenderContent(previewId, currentContent).then(response => {
-            if (response.success) {
-                node.dataset.lastContent = currentContent;
-            }
-        });
-    } else if (currentContent !== lastContent) {
-        // Nếu chưa có previewId, tạo render mới
+    if (currentContent !== lastContent && currentPreviewContainer) {
+        debugLog('Content changed, current container ID:', currentPreviewContainer.dataset.previewId);
+        node.dataset.lastContent = currentContent;
         processCodeBlock(node);
     }
 }
