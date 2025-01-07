@@ -55,10 +55,11 @@ function createPreviewContainer() {
     `;
 
     const title = document.createElement('div');
-    title.textContent = 'Preview';
+    title.textContent = 'Live Preview';
     title.style.cssText = `
         font-weight: 500;
         font-size: 14px;
+        color: black;
     `;
 
     const controls = document.createElement('div');
