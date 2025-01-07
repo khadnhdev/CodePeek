@@ -68,21 +68,6 @@ function createPreviewContainer() {
         align-items: center;
     `;
 
-    // History dropdown
-    const historySelect = document.createElement('select');
-    historySelect.style.cssText = `
-        padding: 2px;
-        font-size: 12px;
-        border: 1px solid #dee2e6;
-        border-radius: 4px;
-        background: white;
-    `;
-    historySelect.onchange = (e) => {
-        const url = e.target.value;
-        const iframe = container.querySelector('iframe');
-        if (iframe) iframe.src = url;
-    };
-
     // Open in Browser button
     const openBrowserBtn = document.createElement('button');
     openBrowserBtn.innerHTML = '↗';
@@ -183,7 +168,6 @@ function createPreviewContainer() {
     }
 
     // Assemble the components
-    controls.appendChild(historySelect);
     controls.appendChild(openBrowserBtn);
     controls.appendChild(closeBtn);
     header.appendChild(title);
@@ -200,7 +184,7 @@ function createPreviewContainer() {
     });
     resizeObserver.observe(container);
 
-    return { container, iframe, historySelect };
+    return { container, iframe };
 }
 
 function updateHistory(url, timestamp = new Date()) {
@@ -339,15 +323,98 @@ document.querySelectorAll('pre, code').forEach(block => {
     processCodeBlock(block);
 });
 
-// Xử lý khi trang thay đổi nội dung động (ví dụ: SPA navigation)
-let lastUrl = location.href;
-new MutationObserver(() => {
-    const url = location.href;
-    if (url !== lastUrl) {
-        lastUrl = url;
-        console.log('URL changed, rescanning page...');
-        document.querySelectorAll('pre, code').forEach(block => {
-            processCodeBlock(block);
-        });
+// Thêm biến để track trạng thái scanning
+let isScanning = false;
+
+// Hàm scan page với debounce và safety checks
+async function scanPage() {
+    if (isScanning) {
+        debugLog('Already scanning, skip');
+        return;
     }
-}).observe(document, { subtree: true, childList: true }); 
+
+    try {
+        isScanning = true;
+        debugLog('Scanning page for code blocks...');
+
+        // Tìm tất cả các code blocks
+        const codeBlocks = document.querySelectorAll('pre, code');
+        debugLog(`Found ${codeBlocks.length} potential code blocks`);
+
+        // Xử lý từng block
+        for (const block of codeBlocks) {
+            await processCodeBlock(block);
+        }
+
+    } catch (error) {
+        debugLog('Error scanning page:', error);
+    } finally {
+        isScanning = false;
+    }
+}
+
+// Debounce function
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Debounced scan function
+const debouncedScan = debounce(scanPage, 1000);
+
+// Xử lý khi trang thay đổi nội dung động
+const pageObserver = new MutationObserver((mutations) => {
+    // Kiểm tra URL thay đổi
+    const currentUrl = location.href;
+    if (currentUrl !== lastUrl) {
+        lastUrl = currentUrl;
+        debugLog('URL changed, rescanning page...');
+        debouncedScan();
+        return;
+    }
+
+    // Kiểm tra các thay đổi DOM quan trọng
+    const shouldRescan = mutations.some(mutation => {
+        // Thay đổi lớn trong DOM
+        if (mutation.addedNodes.length > 0) {
+            const hasCodeBlocks = Array.from(mutation.addedNodes).some(node => {
+                if (node.nodeType !== Node.ELEMENT_NODE) return false;
+                return node.tagName === 'PRE' || 
+                       node.tagName === 'CODE' ||
+                       node.querySelector('pre, code');
+            });
+            return hasCodeBlocks;
+        }
+        return false;
+    });
+
+    if (shouldRescan) {
+        debugLog('Significant DOM changes detected, rescanning...');
+        debouncedScan();
+    }
+});
+
+// Cấu hình page observer
+pageObserver.observe(document, {
+    childList: true,
+    subtree: true
+});
+
+// Scan ban đầu khi script load
+debugLog('Initial page scan');
+scanPage();
+
+// Scan định kỳ nhưng với interval dài hơn
+setInterval(() => {
+    debugLog('Periodic scan check');
+    if (!isScanning) {
+        debouncedScan();
+    }
+}, RECHECK_INTERVAL * 5); // 10 seconds 
