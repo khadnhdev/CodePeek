@@ -20,6 +20,7 @@
     "storage"
   ],
   "host_permissions": [
+    "https://live.jobsum.works/*",
     "http://localhost:3000/*",
     "https://you.com/*",
     "https://chatgpt.com/*"

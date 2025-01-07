@@ -1,4 +1,4 @@
-const RENDER_API = 'http://localhost:3000/api/render';
+const RENDER_API = 'https://live.jobsum.works/api/render';
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'RENDER_CODE') {
