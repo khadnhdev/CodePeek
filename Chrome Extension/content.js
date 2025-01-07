@@ -1,10 +1,12 @@
-const RECHECK_INTERVAL = 2000; // 2 giây kiểm tra lại một lần
-const processedNodes = new Map(); // Map<Node, timestamp>
+const RECHECK_INTERVAL = 2000;
+const processedNodes = new Map();
 const detector = new CodeDetector();
+let renderHistory = [];
+let currentPreviewContainer = null;
 
-function createPreviewContainer(previewId, url) {
+function createPreviewContainer() {
     const container = document.createElement('div');
-    container.id = `preview-${previewId}`;
+    container.id = 'code-preview-container';
     container.className = 'code-preview';
     container.style.cssText = `
         position: fixed;
@@ -40,7 +42,45 @@ function createPreviewContainer(previewId, url) {
     controls.style.cssText = `
         display: flex;
         gap: 8px;
+        align-items: center;
     `;
+
+    // History dropdown
+    const historySelect = document.createElement('select');
+    historySelect.style.cssText = `
+        padding: 2px;
+        font-size: 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        background: white;
+    `;
+    historySelect.onchange = (e) => {
+        const url = e.target.value;
+        const iframe = container.querySelector('iframe');
+        if (iframe) iframe.src = url;
+    };
+
+    // Open in Browser button
+    const openBrowserBtn = document.createElement('button');
+    openBrowserBtn.innerHTML = '↗';
+    openBrowserBtn.title = 'Open in Browser';
+    openBrowserBtn.style.cssText = `
+        border: none;
+        background: none;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 0 4px;
+        color: #666;
+        display: flex;
+        align-items: center;
+    `;
+    openBrowserBtn.onclick = (e) => {
+        e.stopPropagation();
+        const iframe = container.querySelector('iframe');
+        if (iframe && iframe.src) {
+            window.open(iframe.src, '_blank');
+        }
+    };
 
     const collapseBtn = document.createElement('button');
     collapseBtn.innerHTML = '−';
@@ -71,7 +111,6 @@ function createPreviewContainer(previewId, url) {
     `;
 
     const iframe = document.createElement('iframe');
-    iframe.src = url;
     iframe.style.cssText = `
         width: 100%;
         height: 100%;
@@ -90,6 +129,7 @@ function createPreviewContainer(previewId, url) {
     closeBtn.onclick = (e) => {
         e.stopPropagation();
         container.remove();
+        currentPreviewContainer = null;
     };
 
     // Make container draggable
@@ -116,7 +156,6 @@ function createPreviewContainer(previewId, url) {
             currentX = e.clientX - initialX;
             currentY = e.clientY - initialY;
 
-            // Keep within viewport bounds
             const maxX = window.innerWidth - container.offsetWidth;
             const maxY = window.innerHeight - container.offsetHeight;
             currentX = Math.min(Math.max(0, currentX), maxX);
@@ -136,6 +175,8 @@ function createPreviewContainer(previewId, url) {
     }
 
     // Assemble the components
+    controls.appendChild(historySelect);
+    controls.appendChild(openBrowserBtn);
     controls.appendChild(collapseBtn);
     controls.appendChild(closeBtn);
     header.appendChild(title);
@@ -144,7 +185,24 @@ function createPreviewContainer(previewId, url) {
     container.appendChild(header);
     container.appendChild(content);
 
-    return container;
+    return { container, iframe, historySelect };
+}
+
+function updateHistory(url, timestamp = new Date()) {
+    // Thêm vào history
+    renderHistory.unshift({ url, timestamp });
+    // Giới hạn history 20 items
+    renderHistory = renderHistory.slice(0, 20);
+
+    // Cập nhật dropdown nếu container tồn tại
+    if (currentPreviewContainer) {
+        const select = currentPreviewContainer.querySelector('select');
+        select.innerHTML = renderHistory.map((item, index) => `
+            <option value="${item.url}" ${index === 0 ? 'selected' : ''}>
+                ${new Date(item.timestamp).toLocaleTimeString()} - Preview ${renderHistory.length - index}
+            </option>
+        `).join('');
+    }
 }
 
 async function processCodeBlock(node) {
@@ -158,10 +216,8 @@ async function processCodeBlock(node) {
     const code = detector.extractCode(node);
     if (!code) return;
 
-    // Lưu content để so sánh sau này
     node.dataset.lastContent = code;
     
-    // Gửi code đến background script
     chrome.runtime.sendMessage({
         type: 'RENDER_CODE',
         payload: { 
@@ -170,18 +226,17 @@ async function processCodeBlock(node) {
         }
     }, response => {
         if (response && response.success) {
-            // Cập nhật hoặc tạo mới preview container
-            let previewContainer = document.getElementById(`preview-${response.previewId}`);
-            if (!previewContainer) {
-                previewContainer = createPreviewContainer(response.previewId, response.url);
-                document.body.appendChild(previewContainer);
+            if (!currentPreviewContainer) {
+                const { container, iframe } = createPreviewContainer();
+                document.body.appendChild(container);
+                currentPreviewContainer = container;
+                iframe.src = response.url;
             } else {
-                // Nếu container đã tồn tại, chỉ cập nhật URL của iframe
-                const iframe = previewContainer.querySelector('iframe');
+                const iframe = currentPreviewContainer.querySelector('iframe');
                 if (iframe) iframe.src = response.url;
             }
 
-            // Lưu ID để tham chiếu sau này
+            updateHistory(response.url);
             node.dataset.previewId = response.previewId;
             processedNodes.set(node, currentTime);
         }
