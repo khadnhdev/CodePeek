@@ -1,0 +1,2 @@
+Ứng dụng cho phép người dùng nhập mã HTML, CSS, JS hoặc Mermaid. Sau khi nhấn nút "Render" thì ứng dụng sẽ hiển thị kết quả.
+lưu kết quả hoặc input lại vào database, init 1 guid để xem lại kết quả.

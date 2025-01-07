@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Renderer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Code Renderer</h1>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <select class="form-select" id="codeType" onchange="toggleEditor()">
+                        <option value="combined">HTML + CSS + JS</option>
+                        <option value="mermaid">Mermaid</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <div id="htmlCssJsEditor">
+                        <textarea class="form-control" id="codeInput" rows="15" placeholder="Nhập code HTML đầy đủ...
+Ví dụ:
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        /* CSS ở đây */
+    </style>
+</head>
+<body>
+    <!-- HTML ở đây -->
+    <script>
+        // JavaScript ở đây
+    </script>
+</body>
+</html>"></textarea>
+                    </div>
+                    <div id="mermaidEditor" style="display: none;">
+                        <textarea class="form-control" id="mermaidInput" rows="10" placeholder="Nhập mã Mermaid..."></textarea>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                Ví dụ Mermaid:
+                                <pre>graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;</pre>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="renderCode()">Render</button>
+            </div>
+            <div class="col-md-6">
+                <div id="output" class="border p-3 min-vh-50"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true });
+
+        function toggleEditor() {
+            const type = document.getElementById('codeType').value;
+            const htmlCssJsEditor = document.getElementById('htmlCssJsEditor');
+            const mermaidEditor = document.getElementById('mermaidEditor');
+            
+            if (type === 'mermaid') {
+                htmlCssJsEditor.style.display = 'none';
+                mermaidEditor.style.display = 'block';
+            } else {
+                htmlCssJsEditor.style.display = 'block';
+                mermaidEditor.style.display = 'none';
+            }
+        }
+
+        async function renderCode() {
+            const type = document.getElementById('codeType').value;
+            const output = document.getElementById('output');
+            
+            let code;
+            if (type === 'mermaid') {
+                code = document.getElementById('mermaidInput').value;
+            } else {
+                code = document.getElementById('codeInput').value;
+            }
+
+            // Lưu vào database
+            const response = await fetch('/render', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ code, type })
+            });
+            const data = await response.json();
+
+            // Clear previous output
+            output.innerHTML = '';
+
+            // Render code based on type
+            if (type === 'mermaid') {
+                // Render Mermaid diagram
+                const mermaidDiv = document.createElement('div');
+                mermaidDiv.className = 'mermaid';
+                mermaidDiv.textContent = code;
+                output.appendChild(mermaidDiv);
+                mermaid.init();
+            } else {
+                // Render combined HTML/CSS/JS
+                const iframe = document.createElement('iframe');
+                iframe.style.width = '100%';
+                iframe.style.height = '400px';
+                iframe.style.border = 'none';
+                output.appendChild(iframe);
+
+                const iframeDoc = iframe.contentWindow.document;
+                iframeDoc.open();
+                iframeDoc.write(code);
+                iframeDoc.close();
+            }
+
+            // Hiển thị link để xem lại
+            const viewLink = document.createElement('div');
+            viewLink.innerHTML = `<a href="/view/${data.id}" class="mt-3 d-block">Permanent link</a>`;
+            output.appendChild(viewLink);
+        }
+    </script>
+</body>
+</html> 

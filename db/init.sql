@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS renders (
+    id TEXT PRIMARY KEY,
+    input_code TEXT NOT NULL,
+    type TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+); 
