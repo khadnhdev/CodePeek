@@ -12,11 +12,17 @@ function createPreviewContainer() {
         position: fixed;
         bottom: 20px;
         right: 20px;
-        width: 400px;
+        width: 600px;
         background: white;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         border-radius: 8px;
         z-index: 999999;
+        resize: both;
+        overflow: auto;
+        min-width: 400px;
+        min-height: 300px;
+        max-width: 90vw;
+        max-height: 90vh;
     `;
 
     const header = document.createElement('div');
@@ -82,17 +88,6 @@ function createPreviewContainer() {
         }
     };
 
-    const collapseBtn = document.createElement('button');
-    collapseBtn.innerHTML = '−';
-    collapseBtn.style.cssText = `
-        border: none;
-        background: none;
-        font-size: 16px;
-        cursor: pointer;
-        padding: 0 4px;
-        color: #666;
-    `;
-
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = '×';
     closeBtn.style.cssText = `
@@ -106,8 +101,8 @@ function createPreviewContainer() {
 
     const content = document.createElement('div');
     content.style.cssText = `
-        height: 300px;
-        transition: height 0.2s;
+        height: 500px;
+        position: relative;
     `;
 
     const iframe = document.createElement('iframe');
@@ -115,16 +110,12 @@ function createPreviewContainer() {
         width: 100%;
         height: 100%;
         border: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
     `;
-
-    // Event handlers
-    let isCollapsed = false;
-    collapseBtn.onclick = (e) => {
-        e.stopPropagation();
-        isCollapsed = !isCollapsed;
-        content.style.height = isCollapsed ? '0' : '300px';
-        collapseBtn.innerHTML = isCollapsed ? '+' : '−';
-    };
 
     closeBtn.onclick = (e) => {
         e.stopPropagation();
@@ -177,13 +168,20 @@ function createPreviewContainer() {
     // Assemble the components
     controls.appendChild(historySelect);
     controls.appendChild(openBrowserBtn);
-    controls.appendChild(collapseBtn);
     controls.appendChild(closeBtn);
     header.appendChild(title);
     header.appendChild(controls);
     content.appendChild(iframe);
     container.appendChild(header);
     container.appendChild(content);
+
+    // Thêm resize observer để đảm bảo iframe luôn fit với container
+    const resizeObserver = new ResizeObserver(() => {
+        if (container.style.height) {
+            content.style.height = `${parseInt(container.style.height) - header.offsetHeight}px`;
+        }
+    });
+    resizeObserver.observe(container);
 
     return { container, iframe, historySelect };
 }

@@ -1,0 +1,12 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="128" height="128" rx="24" fill="#2563EB"/>
+  
+  <!-- Code brackets -->
+  <path d="M48 38L28 64L48 90" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M80 38L100 64L80 90" stroke="white" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Preview window -->
+  <rect x="40" y="52" width="48" height="24" rx="4" stroke="white" stroke-width="4"/>
+  <circle cx="64" cy="64" r="4" fill="white"/>
+</svg> 
