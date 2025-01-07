@@ -1,40 +1,40 @@
 {
-  "manifest_version": 3,
-  "name": "Code Preview Live",
-  "version": "1.0",
-  "description": "Instantly preview HTML and Mermaid code while browsing",
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  },
-  "action": {
-    "default_icon": {
+    "manifest_version": 3,
+    "name": "Live Code Preview for You.com and ChatGPT",
+    "version": "1.0",
+    "description": "Instantly preview HTML and Mermaid code on You.com and ChatGPT.",
+    "icons": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
-    }
-  },
-  "permissions": [
-    "activeTab",
-    "storage"
-  ],
-  "host_permissions": [
-    "https://live.jobsum.works/*",
-    "http://localhost:3000/*",
-    "https://you.com/*",
-    "https://chatgpt.com/*"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "content_scripts": [
-    {
-      "matches": [
-        "https://you.com/*",
-        "https://chatgpt.com/*"
-      ],
-      "js": ["detector.js", "content.js"]
-    }
-  ]
-} 
+    },
+    "action": {
+      "default_icon": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+      }
+    },
+    "permissions": [
+      "activeTab"
+    ],
+    "host_permissions": [
+      "https://live.jobsum.works/*",
+      "http://localhost:3000/*",
+      "https://you.com/*",
+      "https://chatgpt.com/*"
+    ],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "content_scripts": [
+      {
+        "matches": [
+          "https://you.com/*",
+          "https://chatgpt.com/*"
+        ],
+        "js": ["detector.js", "content.js"]
+      }
+    ]
+  }
+  
