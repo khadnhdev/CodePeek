@@ -5,6 +5,12 @@ const { createServer } = require('http');
 const { Server } = require('socket.io');
 const db = require('./db/database');
 const logger = require('./utils/logger');
+const { exec } = require('child_process');
+const fs = require('fs').promises;
+const path = require('path');
+const os = require('os');
+const { VM } = require('vm2');
+const { spawn } = require('child_process');
 
 const app = express();
 const httpServer = createServer(app);
@@ -497,6 +503,313 @@ app.post('/api/render/upsert', (req, res) => {
             }
         );
     }
+});
+
+// Thêm hàm detect language
+function detectLanguage(code) {
+    // PHP
+    if (code.includes('<?php') || code.match(/^\s*<\?/)) {
+        return 'php';
+    }
+    
+    // Python
+    if (code.match(/^(import|from|def|class|print)/m) || 
+        code.includes('__init__') || 
+        code.includes('self.')) {
+        return 'python';
+    }
+    
+    // Node.js/JavaScript
+    if (code.match(/^(const|let|var|function|class|console)/m) || 
+        code.includes('require(') || 
+        code.includes('module.exports') ||
+        code.includes('export ') ||
+        code.includes('async ')) {
+        return 'nodejs';
+    }
+    
+    return 'unknown';
+}
+
+// Cấu hình cho các ngôn ngữ
+const LANG_CONFIG = {
+    php: {
+        command: 'php',
+        fileExt: '.php',
+        timeout: 5000,
+    },
+    python: {
+        command: 'python3',
+        fileExt: '.py',
+        timeout: 5000,
+    },
+    nodejs: {
+        // NodeJS sẽ chạy trong VM2
+        timeout: 5000,
+    }
+};
+
+// Hàm thực thi code NodeJS trong sandbox
+async function executeNodeJS(code) {
+    const vm = new VM({
+        timeout: 5000,
+        sandbox: {
+            console: {
+                log: (...args) => {
+                    output.push(args.join(' '));
+                }
+            }
+        },
+        eval: false,
+        wasm: false,
+    });
+
+    const output = [];
+    try {
+        vm.run(code);
+        return {
+            output: output.join('\n'),
+            error: '',
+            exitCode: 0
+        };
+    } catch (error) {
+        return {
+            output: '',
+            error: error.message,
+            exitCode: 1
+        };
+    }
+}
+
+// Hàm thực thi code PHP và Python
+async function executeWithProcess(code, language) {
+    const config = LANG_CONFIG[language];
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), `code-${language}-`));
+    const codePath = path.join(tmpDir, `code${config.fileExt}`);
+
+    try {
+        await fs.writeFile(codePath, code);
+
+        return new Promise((resolve) => {
+            const args = [codePath];
+            const process = spawn(config.command, args);
+            let stdout = '';
+            let stderr = '';
+            let killed = false;
+
+            const timer = setTimeout(() => {
+                process.kill();
+                killed = true;
+            }, config.timeout);
+
+            process.stdout.on('data', (data) => {
+                stdout += data.toString();
+            });
+
+            process.stderr.on('data', (data) => {
+                stderr += data.toString();
+            });
+
+            process.on('close', (code) => {
+                clearTimeout(timer);
+                fs.rm(tmpDir, { recursive: true, force: true })
+                    .catch(console.error);
+
+                if (killed) {
+                    resolve({
+                        output: '',
+                        error: 'Execution timed out',
+                        exitCode: 124
+                    });
+                } else {
+                    resolve({
+                        output: stdout,
+                        error: stderr,
+                        exitCode: code
+                    });
+                }
+            });
+        });
+    } catch (error) {
+        await fs.rm(tmpDir, { recursive: true, force: true });
+        throw error;
+    }
+}
+
+// Cập nhật hàm executeCode
+async function executeCode(code, language) {
+    // Kiểm tra memory usage hiện tại
+    const memoryLimit = 500 * 1024 * 1024; // 500MB
+    if (process.memoryUsage().heapUsed > memoryLimit) {
+        throw new Error('Server is under heavy load, please try again later');
+    }
+
+    // Thực thi code dựa trên ngôn ngữ
+    if (language === 'nodejs') {
+        return executeNodeJS(code);
+    } else if (language === 'php' || language === 'python') {
+        return executeWithProcess(code, language);
+    } else {
+        throw new Error('Unsupported language');
+    }
+}
+
+// Thêm rate limiting middleware
+const rateLimit = require('express-rate-limit');
+
+const executeLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 50, // Giới hạn 50 requests mỗi IP trong 15 phút
+    message: 'Too many code execution requests, please try again later'
+});
+
+// Thêm hàm kiểm tra ngôn ngữ đã cài đặt chưa
+async function checkLanguageAvailability() {
+    const availableLanguages = {
+        nodejs: true, // Node.js luôn có sẵn vì server chạy Node
+        python: false,
+        php: false
+    };
+
+    try {
+        // Kiểm tra Python với nhiều command khác nhau
+        await new Promise((resolve) => {
+            // Thử các lệnh python khác nhau theo thứ tự ưu tiên
+            const pythonCommands = [
+                'python3 --version',
+                'python --version',
+                'py --version',
+                'py -3 --version'
+            ];
+
+            const tryNextCommand = (index) => {
+                if (index >= pythonCommands.length) {
+                    resolve();
+                    return;
+                }
+
+                exec(pythonCommands[index], (error, stdout, stderr) => {
+                    if (!error && (stdout.toLowerCase().includes('python') || stderr.toLowerCase().includes('python'))) {
+                        availableLanguages.python = true;
+                        // Lưu lại command thành công để sử dụng sau này
+                        LANG_CONFIG.python.command = pythonCommands[index].split(' ')[0];
+                        resolve();
+                    } else {
+                        tryNextCommand(index + 1);
+                    }
+                });
+            };
+
+            tryNextCommand(0);
+        });
+
+        // Kiểm tra PHP
+        await new Promise((resolve) => {
+            exec('php --version', (error, stdout, stderr) => {
+                if (!error) {
+                    availableLanguages.php = true;
+                }
+                resolve();
+            });
+        });
+
+    } catch (error) {
+        console.error('Error checking language availability:', error);
+    }
+
+    return availableLanguages;
+}
+
+// Biến global để lưu trạng thái các ngôn ngữ
+let AVAILABLE_LANGUAGES = {
+    nodejs: true,
+    python: false,
+    php: false
+};
+
+// Khởi tạo kiểm tra ngôn ngữ khi start server
+(async () => {
+    AVAILABLE_LANGUAGES = await checkLanguageAvailability();
+    console.log('Available languages:', AVAILABLE_LANGUAGES);
+})();
+
+// Cập nhật API endpoint
+app.post('/api/execute', executeLimiter, async (req, res) => {
+    try {
+        const { code } = req.body;
+        
+        // Validate code size
+        if (!code || code.length > 50000) {
+            return res.status(400).json({ 
+                error: 'Code is required and must be less than 50KB' 
+            });
+        }
+
+        const language = detectLanguage(code);
+        
+        if (language === 'unknown') {
+            return res.status(400).json({ 
+                error: 'Could not detect programming language' 
+            });
+        }
+
+        // Kiểm tra ngôn ngữ có được hỗ trợ không
+        if (!AVAILABLE_LANGUAGES[language]) {
+            return res.status(400).json({
+                error: `${language} is not available on this server. Please contact administrator to enable it.`
+            });
+        }
+
+        // Kiểm tra các pattern nguy hiểm
+        const dangerousPatterns = [
+            /process\.env/,
+            /require\s*\(\s*['"]child_process['"]\s*\)/,
+            /exec\s*\(/,
+            /eval\s*\(/,
+            /fs\./,
+            /http/i,
+            /net\./,
+            /spawn/,
+            /fork/,
+            /process\./,
+            /global\./,
+            /Buffer\./,
+            /\.__proto__/,
+            /Object\./,
+            /Function\(/,
+            /setTimeout/,
+            /setInterval/,
+            /setImmediate/
+        ];
+
+        if (dangerousPatterns.some(pattern => pattern.test(code))) {
+            return res.status(400).json({
+                error: 'Code contains forbidden patterns'
+            });
+        }
+
+        const result = await executeCode(code, language);
+
+        res.json({
+            language,
+            output: result.output,
+            error: result.error,
+            exitCode: result.exitCode
+        });
+
+    } catch (error) {
+        logger.error('Code execution failed', error);
+        
+        res.status(500).json({
+            error: error.message || 'Code execution failed',
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
+    }
+});
+
+// Thêm endpoint để lấy danh sách ngôn ngữ được hỗ trợ
+app.get('/api/languages', (req, res) => {
+    res.json(AVAILABLE_LANGUAGES);
 });
 
 // Thay đổi listen để sử dụng httpServer

@@ -276,6 +276,67 @@
                 margin-top: -80px;
             }
         }
+
+        /* Code Runner Styles */
+        .code-runner {
+            margin-top: 40px;
+        }
+
+        .language-selector {
+            margin-bottom: 16px;
+        }
+
+        .language-selector select {
+            padding: 8px 12px;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            min-width: 200px;
+        }
+
+        .code-output {
+            font-family: 'JetBrains Mono', monospace;
+            padding: 16px;
+            background: var(--gray-50);
+            height: 100%;
+            overflow: auto;
+            white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .execution-info {
+            display: flex;
+            gap: 12px;
+            font-size: 12px;
+            color: var(--gray-600);
+        }
+
+        .output-success {
+            color: #10B981;
+        }
+
+        .output-error {
+            color: #EF4444;
+            background: #FEF2F2;
+            padding: 8px;
+            border-radius: 4px;
+            margin-top: 8px;
+        }
+
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 <body>
@@ -308,6 +369,39 @@
                         </a>
                     </div>
                     <div id="output"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="playground code-runner">
+            <h2>Code Runner</h2>
+            <div class="playground-container">
+                <div class="code-input">
+                    <div class="language-selector">
+                        <select id="languageSelect">
+                            <option value="nodejs">JavaScript (Node.js)</option>
+                            <option value="python">Python</option>
+                            <option value="php">PHP</option>
+                        </select>
+                    </div>
+                    <textarea id="codeRunnerInput" placeholder="Enter your code here...">// Example: Hello World
+console.log('Hello, World!');</textarea>
+                    <button onclick="runCode()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 3l14 9-14 9V3z"/>
+                        </svg>
+                        Run Code
+                    </button>
+                </div>
+                <div class="preview-container">
+                    <div class="preview-header">
+                        <span class="preview-title">Output</span>
+                        <div class="execution-info">
+                            <span id="executionTime"></span>
+                            <span id="executionStatus"></span>
+                        </div>
+                    </div>
+                    <div id="codeOutput" class="code-output"></div>
                 </div>
             </div>
         </section>
@@ -391,6 +485,37 @@
         // Thay thế localStorage bằng biến trong memory
         let currentRenderID = null;
 
+        let availableLanguages = {
+            nodejs: true,
+            python: false,
+            php: false
+        };
+
+        // Fetch available languages when page loads
+        async function fetchAvailableLanguages() {
+            try {
+                const response = await fetch('/api/languages');
+                const data = await response.json();
+                availableLanguages = data;
+                
+                // Update language selector
+                const select = document.getElementById('languageSelect');
+                select.innerHTML = Object.entries(availableLanguages)
+                    .map(([lang, available]) => `
+                        <option value="${lang}" ${!available ? 'disabled' : ''}>
+                            ${lang.toUpperCase()}${!available ? ' (Not Available)' : ''}
+                        </option>
+                    `).join('');
+                    
+                // Set initial example if language is available
+                if (availableLanguages.nodejs) {
+                    document.getElementById('codeRunnerInput').value = codeExamples.nodejs;
+                }
+            } catch (error) {
+                console.error('Error fetching available languages:', error);
+            }
+        }
+
         async function renderCode() {
             const code = document.getElementById('codeInput').value;
             if (!code) return;
@@ -438,7 +563,106 @@
         window.addEventListener('DOMContentLoaded', () => {
             document.getElementById('codeInput').value = exampleCode;
             renderCode();
+            fetchAvailableLanguages();
         });
+
+        // Code Runner Examples
+        const codeExamples = {
+            nodejs: `// Calculate fibonacci sequence
+function fibonacci(n) {
+    if (n <= 1) return n;
+    return fibonacci(n-1) + fibonacci(n-2);
+}
+
+console.log("Fibonacci sequence (first 10 numbers):");
+for (let i = 0; i < 10; i++) {
+    console.log(fibonacci(i));
+}`,
+            python: `# Calculate factorial
+def factorial(n):
+    if n == 0:
+        return 1
+    return n * factorial(n-1)
+
+print("Factorial of numbers 0 to 5:")
+for i in range(6):
+    print(f"{i}! = {factorial(i)}")`,
+            php: `<?php
+// Simple number classifier
+function classifyNumber($num) {
+    if ($num > 0) {
+        return "positive";
+    } elseif ($num < 0) {
+        return "negative";
+    }
+    return "zero";
+}
+
+$numbers = [-5, 0, 10];
+foreach ($numbers as $num) {
+    echo "Number {$num} is " . classifyNumber($num) . "\\n";
+}
+?>`
+        };
+
+        // Update code example when language changes
+        document.getElementById('languageSelect').addEventListener('change', function(e) {
+            document.getElementById('codeRunnerInput').value = codeExamples[e.target.value];
+        });
+
+        // Run code function
+        async function runCode() {
+            const code = document.getElementById('codeRunnerInput').value;
+            const language = document.getElementById('languageSelect').value;
+            const output = document.getElementById('codeOutput');
+            const status = document.getElementById('executionStatus');
+            const timeInfo = document.getElementById('executionTime');
+            const button = document.querySelector('.code-runner button');
+            const originalText = button.innerHTML;
+
+            if (!code.trim()) return;
+
+            try {
+                button.innerHTML = '<svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg> Running...';
+                button.disabled = true;
+                status.textContent = 'Running...';
+                timeInfo.textContent = '';
+                output.textContent = '';
+
+                const startTime = performance.now();
+
+                const response = await fetch('/api/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ code })
+                });
+
+                const data = await response.json();
+                const executionTime = (performance.now() - startTime).toFixed(2);
+
+                if (data.error) {
+                    output.innerHTML = `<div class="output-error">${data.error}</div>`;
+                    status.textContent = '❌ Error';
+                } else {
+                    output.textContent = data.output || 'No output';
+                    status.textContent = data.exitCode === 0 ? '✅ Success' : '❌ Error';
+                }
+
+                timeInfo.textContent = `Execution time: ${executionTime}ms`;
+
+            } catch (error) {
+                output.innerHTML = `<div class="output-error">Failed to execute code: ${error.message}</div>`;
+                status.textContent = '❌ Error';
+            } finally {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        }
+
+        // Set initial code example
+        document.getElementById('codeRunnerInput').value = codeExamples.nodejs;
     </script>
 </body>
 </html> 
