@@ -1,668 +1,161 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Code Preview Live</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #2563EB;
-            --primary-dark: #1d4ed8;
-            --gray-50: #f8f9fa;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-600: #4b5563;
-            --gray-800: #1f2937;
-        }
+<%- include('partials/header') %>
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<main>
+    <section class="hero">
+        <div class="container">
+            <h1>Instant Code Preview</h1>
+            <p class="hero-subtitle">Preview HTML, JavaScript, CSS, Mermaid diagrams, and SVG code directly on You.com, ChatGPT, and Deepseek.</p>
+            
+            <div class="hero-cta">
+                <a href="https://chromewebstore.google.com/detail/infhkockcenbmlncfgboaeninconkaoe" class="cta-button primary" target="_blank">
+                    <i class="fas fa-download"></i> Install Chrome Extension
+                </a>
+                <a href="/playground" class="cta-button secondary">
+                    <i class="fas fa-bolt"></i> Try Playground
+                </a>
+            </div>
+        </div>
+    </section>
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            line-height: 1.6;
-            color: var(--gray-800);
-            background: var(--gray-50);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
-
-        .hero {
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 60px 0;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.2);
-        }
-
-        .hero h1 {
-            font-size: 3rem;
-            font-weight: 600;
-            margin-bottom: 16px;
-            background: linear-gradient(to right, #fff, #e0e7ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .hero p {
-            font-size: 1.2rem;
-            max-width: 600px;
-            margin: 0 auto;
-            opacity: 0.9;
-        }
-
-        .playground {
-            background: white;
-            padding: 32px;
-            border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin: -120px auto 60px;
-            position: relative;
-            max-width: 1100px;
-        }
-
-        .playground h2 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 24px;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .playground h2::before {
-            content: '▶';
-            font-size: 14px;
-            color: var(--primary);
-        }
-
-        .playground-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 32px;
-            min-height: 500px;
-        }
-
-        .code-input {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .code-input textarea {
-            width: 100%;
-            height: 450px;
-            padding: 16px;
-            border: 1px solid var(--gray-200);
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 14px;
-            line-height: 1.5;
-            resize: none;
-            transition: border-color 0.2s;
-            background: var(--gray-50);
-        }
-
-        .code-input textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        .code-input button {
-            padding: 12px 24px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            font-size: 16px;
-        }
-
-        .code-input button:hover {
-            background: var(--primary-dark);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-        }
-
-        .code-input button:active {
-            transform: translateY(0);
-        }
-
-        .preview-container {
-            border: 1px solid var(--gray-200);
-            border-radius: 8px;
-            overflow: hidden;
-            background: white;
-            height: 500px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .preview-header {
-            padding: 8px 16px;
-            background: var(--gray-50);
-            border-bottom: 1px solid var(--gray-200);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .preview-title {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--gray-600);
-        }
-
-        #output {
-            flex: 1;
-            position: relative;
-        }
-
-        #output iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        .view-link {
-            color: var(--primary);
-            text-decoration: none;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            transition: color 0.2s;
-        }
-
-        .view-link:hover {
-            color: var(--primary-dark);
-        }
-
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 24px;
-            margin-bottom: 60px;
-        }
-
-        .feature-card {
-            background: white;
-            padding: 24px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-2px);
-        }
-
-        .feature-card h3 {
-            font-size: 1.2rem;
-            font-weight: 500;
-            margin-bottom: 12px;
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .api-section {
-            margin-top: 40px;
-            padding: 40px;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        .api-section h2 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 24px;
-            color: var(--primary);
-        }
-
-        .endpoint {
-            background: var(--gray-50);
-            padding: 16px;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            margin: 16px 0;
-            border: 1px solid var(--gray-200);
-        }
-
-        code {
-            background: var(--gray-50);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 14px;
-        }
-
-        @media (max-width: 768px) {
-            .playground-container {
-                grid-template-columns: 1fr;
-            }
-
-            .hero {
-                padding: 40px 20px;
-            }
-
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-
-            .playground {
-                margin-top: -80px;
-            }
-        }
-
-        /* Code Runner Styles */
-        .code-runner {
-            margin-top: 40px;
-        }
-
-        .language-selector {
-            margin-bottom: 16px;
-        }
-
-        .language-selector select {
-            padding: 8px 12px;
-            border: 1px solid var(--gray-200);
-            border-radius: 6px;
-            font-size: 14px;
-            background: white;
-            min-width: 200px;
-        }
-
-        .code-output {
-            font-family: 'JetBrains Mono', monospace;
-            padding: 16px;
-            background: var(--gray-50);
-            height: 100%;
-            overflow: auto;
-            white-space: pre-wrap;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-
-        .execution-info {
-            display: flex;
-            gap: 12px;
-            font-size: 12px;
-            color: var(--gray-600);
-        }
-
-        .output-success {
-            color: #10B981;
-        }
-
-        .output-error {
-            color: #EF4444;
-            background: #FEF2F2;
-            padding: 8px;
-            border-radius: 4px;
-            margin-top: 8px;
-        }
-
-        .animate-spin {
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <section class="hero">
-            <h1>Code Preview Live</h1>
-            <p>Instantly preview HTML and Mermaid code while browsing the web</p>
-        </section>
-
-        <section class="playground">
-            <h2>Try it out</h2>
-            <div class="playground-container">
-                <div class="code-input">
-                    <textarea id="codeInput" placeholder="Enter HTML or Mermaid code here..."></textarea>
-                    <button onclick="renderCode()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M5 12h14M12 5l7 7-7 7"/>
-                        </svg>
-                        Preview Code
-                    </button>
-                </div>
-                <div class="preview-container">
-                    <div class="preview-header">
-                        <span class="preview-title">Preview</span>
-                        <a href="#" class="view-link" target="_blank" id="newTabLink">
-                            Open in new tab
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
-                            </svg>
-                        </a>
+    <section class="features">
+        <div class="container">
+            <h2>Key Features</h2>
+            <div class="features-grid">
+                <div class="feature-card html-preview">
+                    <div class="feature-icon">
+                        <i class="fas fa-code"></i>
                     </div>
-                    <div id="output"></div>
+                    <h3>HTML & CSS Preview</h3>
+                    <p>Instantly preview HTML and CSS with external CDN support. Perfect for rapid prototyping and testing.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Live preview</li>
+                        <li><i class="fas fa-check"></i> External CDN support</li>
+                        <li><i class="fas fa-check"></i> Responsive testing</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card js-preview">
+                    <div class="feature-icon">
+                        <i class="fab fa-js"></i>
+                    </div>
+                    <h3>JavaScript Review</h3>
+                    <p>Test JavaScript code with real-time execution and console output. Debug with ease.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Console output</li>
+                        <li><i class="fas fa-check"></i> Error handling</li>
+                        <li><i class="fas fa-check"></i> ES6+ support</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card code-execution">
+                    <div class="feature-icon">
+                        <i class="fas fa-terminal"></i>
+                    </div>
+                    <h3>Multi-Language Support</h3>
+                    <p>Execute code in multiple languages with secure sandboxing.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Node.js execution</li>
+                        <li><i class="fas fa-check"></i> Python runtime</li>
+                        <li><i class="fas fa-check"></i> PHP processing</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card mermaid">
+                    <div class="feature-icon">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                    <h3>Diagram Generation</h3>
+                    <p>Create beautiful diagrams and flowcharts with Mermaid syntax.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check"></i> Flowcharts</li>
+                        <li><i class="fas fa-check"></i> Sequence diagrams</li>
+                        <li><i class="fas fa-check"></i> Real-time rendering</li>
+                    </ul>
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <section class="playground code-runner">
-            <h2>Code Runner</h2>
-            <div class="playground-container">
-                <div class="code-input">
-                    <div class="language-selector">
-                        <select id="languageSelect">
-                            <option value="nodejs">JavaScript (Node.js)</option>
-                            <option value="python">Python</option>
-                            <option value="php">PHP</option>
-                        </select>
-                    </div>
-                    <textarea id="codeRunnerInput" placeholder="Enter your code here...">// Example: Hello World
-console.log('Hello, World!');</textarea>
-                    <button onclick="runCode()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M5 3l14 9-14 9V3z"/>
-                        </svg>
-                        Run Code
-                    </button>
-                </div>
-                <div class="preview-container">
-                    <div class="preview-header">
-                        <span class="preview-title">Output</span>
-                        <div class="execution-info">
-                            <span id="executionTime"></span>
-                            <span id="executionStatus"></span>
+    <section class="showcase-section">
+        <div class="container">
+            <h2>How It Works</h2>
+            <div class="showcase-grid">
+                <div class="showcase-content">
+                    <div class="showcase-steps">
+                        <div class="step">
+                            <span class="step-number">1</span>
+                            <h3>Write Code</h3>
+                            <p>Write your HTML, CSS, JavaScript, or other supported languages</p>
+                        </div>
+                        <div class="step">
+                            <span class="step-number">2</span>
+                            <h3>Instant Preview</h3>
+                            <p>See your code come to life with real-time preview</p>
+                        </div>
+                        <div class="step">
+                            <span class="step-number">3</span>
+                            <h3>Share & Collaborate</h3>
+                            <p>Share your work with others using unique URLs</p>
                         </div>
                     </div>
-                    <div id="codeOutput" class="code-output"></div>
+                </div>
+                <div class="showcase-image">
+                    <img src="/images/preview-demo.png" alt="CodePeek Preview Demo" class="demo-image">
                 </div>
             </div>
-        </section>
+        </div>
+    </section>
 
-        <section class="features">
-            <div class="feature-card">
-                <h3>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2v20M2 12h20"/>
-                    </svg>
-                    Real-time Preview
-                </h3>
-                <p>See your code come to life instantly with live preview functionality for HTML and Mermaid diagrams.</p>
-            </div>
-            <div class="feature-card">
-                <h3>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    History Tracking
-                </h3>
-                <p>Keep track of your previous previews and easily switch between them with built-in history.</p>
-            </div>
-            <div class="feature-card">
-                <h3>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                    </svg>
-                    Easy Integration
-                </h3>
-                <p>Works seamlessly with popular platforms like You.com and ChatGPT.</p>
-            </div>
-        </section>
-
-        <section class="api-section">
+    <section class="api-docs">
+        <div class="container">
             <h2>API Documentation</h2>
-            <div class="endpoint">POST <%= baseUrl %>/api/render</div>
-            <p>Send code content to be rendered:</p>
-            <pre><code>{
-  "content": "Your HTML or Mermaid code here"
-}</code></pre>
-            <p>Response:</p>
-            <pre><code>{
-  "url": "Preview URL",
-  "id": "Unique ID"
-}</code></pre>
-        </section>
-    </div>
-
-    <script>
-        // Thêm example code mặc định
-        const exampleCode = `<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body {
-            font-family: system-ui, sans-serif;
-            max-width: 600px;
-            margin: 40px auto;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        h1 { color: #2563EB; }
-        .card {
-            padding: 20px;
-            border-radius: 8px;
-            background: #f8fafc;
-            border: 1px solid #e5e7eb;
-        }
-    </style>
-</head>
-<body>
-    <h1>Hello World!</h1>
-    <div class="card">
-        <p>This is a preview of your HTML code.</p>
-        <p>Try editing the code to see live changes!</p>
-    </div>
-</body>
-</html>`;
-
-        // Thay thế localStorage bằng biến trong memory
-        let currentRenderID = null;
-
-        let availableLanguages = {
-            nodejs: true,
-            python: false,
-            php: false
-        };
-
-        // Fetch available languages when page loads
-        async function fetchAvailableLanguages() {
-            try {
-                const response = await fetch('/api/languages');
-                const data = await response.json();
-                availableLanguages = data;
-                
-                // Update language selector
-                const select = document.getElementById('languageSelect');
-                select.innerHTML = Object.entries(availableLanguages)
-                    .map(([lang, available]) => `
-                        <option value="${lang}" ${!available ? 'disabled' : ''}>
-                            ${lang.toUpperCase()}${!available ? ' (Not Available)' : ''}
-                        </option>
-                    `).join('');
-                    
-                // Set initial example if language is available
-                if (availableLanguages.nodejs) {
-                    document.getElementById('codeRunnerInput').value = codeExamples.nodejs;
-                }
-            } catch (error) {
-                console.error('Error fetching available languages:', error);
-            }
-        }
-
-        async function renderCode() {
-            const code = document.getElementById('codeInput').value;
-            if (!code) return;
             
-            const output = document.getElementById('output');
-            const button = document.querySelector('.code-input button');
-            const originalText = button.innerHTML;
+            <div class="api-section">
+                <h3><i class="fas fa-palette"></i> Render API</h3>
+                <div class="endpoint">POST <%= baseUrl %>/api/render/upsert</div>
+                <p>Render HTML, Mermaid diagrams, or SVG code:</p>
+                <pre><code>{
+  "content": "Your code here",
+  "id": "Optional ID for updates"
+}</code></pre>
+            </div>
 
-            try {
-                button.innerHTML = '<svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg> Processing...';
-                button.disabled = true;
+            <div class="api-section">
+                <h3><i class="fas fa-bolt"></i> Code Execution API</h3>
+                <div class="endpoint">POST <%= baseUrl %>/api/execute</div>
+                <p>Execute JavaScript, Python, or PHP code:</p>
+                <pre><code>{
+  "code": "Your code here"
+}</code></pre>
+            </div>
 
-                // Gọi API upsert
-                const response = await fetch('/api/render/upsert', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        content: code,
-                        id: currentRenderID 
-                    })
-                });
+            <div class="try-api">
+                <a href="/playground" class="cta-button secondary">
+                    Try in Playground <i class="fas fa-play"></i>
+                </a>
+            </div>
+        </div>
+    </section>
 
-                if (!response.ok) {
-                    throw new Error('Failed to upsert render');
-                }
+    <section class="extension">
+        <div class="container">
+            <h2>Chrome Extension</h2>
+            <div class="extension-features">
+                <ul>
+                    <li><i class="fas fa-sparkles"></i> Works on You.com, ChatGPT, and Deepseek</li>
+                    <li><i class="fas fa-search"></i> Automatic code detection</li>
+                    <li><i class="fas fa-bolt"></i> Real-time preview</li>
+                    <li><i class="fas fa-book"></i> External CDN support</li>
+                    <li><i class="fas fa-globe"></i> Multiple language support</li>
+                </ul>
+                <a href="https://chromewebstore.google.com/detail/infhkockcenbmlncfgboaeninconkaoe" class="cta-button primary" target="_blank">
+                    Install from Chrome Web Store <i class="fas fa-download"></i>
+                </a>
+            </div>
+        </div>
+    </section>
+</main>
 
-                const data = await response.json();
-                currentRenderID = data.id;
+<%- include('partials/footer') %>
 
-                output.innerHTML = `<iframe src="/render-content/${currentRenderID}"></iframe>`;
-                document.getElementById('newTabLink').href = data.url;
-
-            } catch (error) {
-                console.error('Error:', error);
-                output.innerHTML = `<div style="color: #ef4444; padding: 16px;">Failed to render code</div>`;
-            } finally {
-                button.innerHTML = originalText;
-                button.disabled = false;
-            }
-        }
-
-        // Đợi DOM load xong và textarea có giá trị rồi mới render
-        window.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('codeInput').value = exampleCode;
-            renderCode();
-            fetchAvailableLanguages();
-        });
-
-        // Code Runner Examples
-        const codeExamples = {
-            nodejs: `// Calculate fibonacci sequence
-function fibonacci(n) {
-    if (n <= 1) return n;
-    return fibonacci(n-1) + fibonacci(n-2);
-}
-
-console.log("Fibonacci sequence (first 10 numbers):");
-for (let i = 0; i < 10; i++) {
-    console.log(fibonacci(i));
-}`,
-            python: `# Calculate factorial
-def factorial(n):
-    if n == 0:
-        return 1
-    return n * factorial(n-1)
-
-print("Factorial of numbers 0 to 5:")
-for i in range(6):
-    print(f"{i}! = {factorial(i)}")`,
-            php: `<?php
-// Simple number classifier
-function classifyNumber($num) {
-    if ($num > 0) {
-        return "positive";
-    } elseif ($num < 0) {
-        return "negative";
-    }
-    return "zero";
-}
-
-$numbers = [-5, 0, 10];
-foreach ($numbers as $num) {
-    echo "Number {$num} is " . classifyNumber($num) . "\\n";
-}
-?>`
-        };
-
-        // Update code example when language changes
-        document.getElementById('languageSelect').addEventListener('change', function(e) {
-            document.getElementById('codeRunnerInput').value = codeExamples[e.target.value];
-        });
-
-        // Run code function
-        async function runCode() {
-            const code = document.getElementById('codeRunnerInput').value;
-            const language = document.getElementById('languageSelect').value;
-            const output = document.getElementById('codeOutput');
-            const status = document.getElementById('executionStatus');
-            const timeInfo = document.getElementById('executionTime');
-            const button = document.querySelector('.code-runner button');
-            const originalText = button.innerHTML;
-
-            if (!code.trim()) return;
-
-            try {
-                button.innerHTML = '<svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg> Running...';
-                button.disabled = true;
-                status.textContent = 'Running...';
-                timeInfo.textContent = '';
-                output.textContent = '';
-
-                const startTime = performance.now();
-
-                const response = await fetch('/api/execute', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ code })
-                });
-
-                const data = await response.json();
-                const executionTime = (performance.now() - startTime).toFixed(2);
-
-                if (data.error) {
-                    output.innerHTML = `<div class="output-error">${data.error}</div>`;
-                    status.textContent = '❌ Error';
-                } else {
-                    output.textContent = data.output || 'No output';
-                    status.textContent = data.exitCode === 0 ? '✅ Success' : '❌ Error';
-                }
-
-                timeInfo.textContent = `Execution time: ${executionTime}ms`;
-
-            } catch (error) {
-                output.innerHTML = `<div class="output-error">Failed to execute code: ${error.message}</div>`;
-                status.textContent = '❌ Error';
-            } finally {
-                button.innerHTML = originalText;
-                button.disabled = false;
-            }
-        }
-
-        // Set initial code example
-        document.getElementById('codeRunnerInput').value = codeExamples.nodejs;
-    </script>
-</body>
-</html> 
+<script src="/js/preview.js"></script> 
