@@ -11,6 +11,12 @@ const path = require('path');
 const os = require('os');
 const { VM } = require('vm2');
 const { spawn } = require('child_process');
+const rateLimit = require('express-rate-limit');
+
+// Base URL configuration
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const DEFAULT_PORT = 3000;
+//const BASE_URL = 'https://codepeek.jobsum.works';
 
 const app = express();
 const httpServer = createServer(app);
@@ -35,8 +41,7 @@ app.use('/api', (req, res, next) => {
 
 // Routes
 app.get('/', (req, res) => {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    res.render('index', { baseUrl });
+    res.render('index', { baseUrl: BASE_URL });
 });
 
 // Hàm detect loại content
@@ -472,7 +477,7 @@ app.post('/api/render/upsert', (req, res) => {
                 res.json({ 
                     success: true,
                     id,
-                    url: `${req.protocol}://${req.get('host')}/view/${id}`
+                    url: `${BASE_URL}/view/${id}`
                 });
             }
         );
@@ -655,8 +660,6 @@ async function executeCode(code, language) {
 }
 
 // Thêm rate limiting middleware
-const rateLimit = require('express-rate-limit');
-
 const executeLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 50, // Giới hạn 50 requests mỗi IP trong 15 phút
@@ -817,8 +820,18 @@ app.get('/playground', (req, res) => {
     res.render('playground');
 });
 
+// Add API documentation route
+app.get('/api', (req, res) => {
+    res.render('api', { baseUrl: BASE_URL });
+});
+
+// Add About page route
+app.get('/about', (req, res) => {
+    res.render('about');
+});
+
 // Thay đổi listen để sử dụng httpServer
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || DEFAULT_PORT;
 httpServer.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 }); 

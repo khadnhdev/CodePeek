@@ -1,0 +1,132 @@
+/* About Page Styles */
+.about-page {
+    padding: 4rem 0;
+    background: var(--gray-50);
+}
+
+.about-hero {
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.about-hero h1 {
+    font-size: 3rem;
+    color: var(--gray-800);
+    margin-bottom: 1rem;
+}
+
+.about-hero .subtitle {
+    font-size: 1.25rem;
+    color: var(--gray-600);
+}
+
+.about-content {
+    max-width: 600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 1rem;
+    padding: 3rem;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+}
+
+.creator-info {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.creator-info h2 {
+    font-size: 1.75rem;
+    color: var(--gray-800);
+    margin-bottom: 0.5rem;
+}
+
+.social-links {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 3rem;
+}
+
+.social-link {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--gray-50);
+    border-radius: 0.5rem;
+    text-decoration: none;
+    color: var(--gray-700);
+    transition: all 0.2s;
+}
+
+.social-link:hover {
+    background: var(--gray-100);
+    transform: translateY(-2px);
+}
+
+.social-link i {
+    font-size: 1.5rem;
+    width: 24px;
+    text-align: center;
+}
+
+.social-link.tiktok i {
+    color: #000000;
+}
+
+.social-link.github i {
+    color: #333333;
+}
+
+.social-link.linkedin i {
+    color: #0077B5;
+}
+
+.project-info {
+    text-align: center;
+    padding-top: 2rem;
+    border-top: 1px solid var(--gray-200);
+}
+
+.project-info h3 {
+    font-size: 1.5rem;
+    color: var(--gray-800);
+    margin-bottom: 1rem;
+}
+
+.project-info p {
+    color: var(--gray-600);
+    margin-bottom: 1.5rem;
+}
+
+.project-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--primary);
+    color: white;
+    text-decoration: none;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+}
+
+.project-link:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .about-page {
+        padding: 3rem 0;
+    }
+
+    .about-hero h1 {
+        font-size: 2.5rem;
+    }
+
+    .about-content {
+        padding: 2rem;
+        margin: 0 1rem;
+    }
+} 

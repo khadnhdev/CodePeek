@@ -1,0 +1,163 @@
+<%- include('partials/header') %>
+
+<main class="api-documentation">
+    <section class="api-hero">
+        <div class="container">
+            <h1>API Documentation</h1>
+            <p class="api-subtitle">Integrate code preview functionality into your applications with our simple and powerful API</p>
+        </div>
+    </section>
+
+    <div class="container">
+        <section class="api-content">
+            <div class="api-section">
+                <h2>Authentication</h2>
+                <div class="endpoint-card">
+                    <p>Currently, the API is available for public use with rate limiting. Authentication will be required in future versions.</p>
+                    <div class="api-note">
+                        <p><strong>Note:</strong> API requests are limited to 100 requests per minute per IP address.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="api-section">
+                <h2>Render API</h2>
+                
+                <div class="endpoint-card">
+                    <div class="endpoint-header">
+                        <div class="endpoint-title">
+                            <span class="http-method post">POST</span>
+                            <div class="endpoint-url"><%= baseUrl %>/api/render/upsert</div>
+                        </div>
+                    </div>
+
+                    <div class="endpoint-content">
+                        <!-- Request -->
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <div class="code-block-title">
+                                    <i class="fas fa-arrow-right"></i>
+                                    Request Body
+                                </div>
+                                <div class="code-block-actions">
+                                    <button onclick="copyCode(this)" title="Copy code">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <pre><code>{
+  <span class="json-punctuation">{</span>
+    <span class="json-key">"content"</span><span class="json-punctuation">:</span> <span class="json-string">"Your code here"</span><span class="json-punctuation">,</span>
+    <span class="json-key">"id"</span><span class="json-punctuation">:</span> <span class="json-string">"Optional ID for updates"</span>
+  <span class="json-punctuation">}</span>
+}</code></pre>
+                        </div>
+
+                        <!-- Response -->
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <div class="code-block-title">
+                                    <i class="fas fa-arrow-left"></i>
+                                    Response
+                                </div>
+                                <div class="code-block-actions">
+                                    <button onclick="copyCode(this)" title="Copy code">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <pre><code>{
+  "success": true,
+  "id": "generated-id",
+  "url": "https://example.com/view/generated-id"
+}</code></pre>
+                        </div>
+
+                        <!-- Parameters -->
+                        <div class="params-section">
+                            <h4>Parameters</h4>
+                            <table class="params-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        <th>Required</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="param-name">content</span></td>
+                                        <td><span class="param-type">string</span></td>
+                                        <td><span class="param-required yes">Required</span></td>
+                                        <td>The code content to render (HTML, SVG, or Mermaid)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="param-name">id</span></td>
+                                        <td><span class="param-type">string</span></td>
+                                        <td><span class="param-required no">Optional</span></td>
+                                        <td>Existing render ID to update</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Example -->
+                        <div class="code-block">
+                            <div class="code-block-header">
+                                <div class="code-block-title">
+                                    <i class="fas fa-code"></i>
+                                    Example
+                                </div>
+                                <div class="code-block-actions">
+                                    <button onclick="copyCode(this)" title="Copy code">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <pre><code>fetch('<%- baseUrl %>/api/render/upsert', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    content: '<h1>Hello World</h1>'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));</code></pre>
+                        </div>
+
+                        <div class="status-codes">
+                            <h4>Status Codes</h4>
+                            <table class="params-table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="status-code success">200</span></td>
+                                        <td>Successfully created or updated render</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="status-code error">400</span></td>
+                                        <td>Content is required</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="status-code error">500</span></td>
+                                        <td>Internal server error</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</main>
+
+<script src="/js/api.js"></script>
+
+<%- include('partials/footer') %> 
