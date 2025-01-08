@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Playground</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563EB;
+            --primary-dark: #1d4ed8;
+            --gray-50: #f8f9fa;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-600: #4b5563;
+            --gray-800: #1f2937;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: var(--gray-50);
+        }
+
+        .header {
+            padding: 1rem;
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.25rem;
+            color: var(--gray-800);
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        select {
+            padding: 0.5rem;
+            border: 1px solid var(--gray-200);
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            min-width: 150px;
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        button:hover {
+            background: var(--primary-dark);
+        }
+
+        .main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            padding: 1rem;
+            height: calc(100vh - 4rem);
+        }
+
+        .editor-container, .output-container {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--gray-200);
+            font-weight: 500;
+            color: var(--gray-600);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .CodeMirror {
+            flex: 1;
+            height: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+        }
+
+        .output-frame {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: white;
+            min-height: 0;
+        }
+
+        .output-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            height: 100%;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            white-space: pre-wrap;
+            overflow: auto;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .output-content.html-mode {
+            padding: 0;
+        }
+
+        .error {
+            color: #ef4444;
+            background: #fef2f2;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .execution-info {
+            font-size: 0.75rem;
+            color: var(--gray-600);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .status-success {
+            color: #10b981;
+        }
+
+        .status-error {
+            color: #ef4444;
+        }
+
+        @media (max-width: 768px) {
+            .main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .output-header {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .view-link {
+            color: var(--gray-600);
+            text-decoration: none;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.2s;
+        }
+
+        .view-link:hover {
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Code Playground</h1>
+        <div class="controls">
+            <select id="languageSelect">
+                <option value="html">HTML</option>
+                <option value="nodejs">Node.js</option>
+                <option value="python">Python</option>
+                <option value="php">PHP</option>
+            </select>
+            <button onclick="runCode()" id="runButton">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 3l14 9-14 9V3z"/>
+                </svg>
+                Run
+            </button>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="editor-container">
+            <div class="panel-header">
+                Editor
+                <div class="execution-info">
+                    <span id="executionTime"></span>
+                    <span id="executionStatus"></span>
+                </div>
+            </div>
+            <textarea id="editor"></textarea>
+        </div>
+        <div class="output-container">
+            <div class="panel-header">Output</div>
+            <div id="output" class="output-content"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/php/php.min.js"></script>
+    <script>
+        let currentRenderID = null;
+
+        // Code examples for each language
+        const examples = {
+            html: `<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 { color: #2563EB; }
+        .card {
+            padding: 20px;
+            border-radius: 8px;
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Hello World!</h1>
+    <div class="card">
+        <p>This is a preview of your HTML code.</p>
+        <p>Try editing the code to see live changes!</p>
+    </div>
+</body>
+</html>`,
+            nodejs: `// Calculate fibonacci sequence
+function fibonacci(n) {
+    if (n <= 1) return n;
+    return fibonacci(n-1) + fibonacci(n-2);
+}
+
+console.log("Fibonacci sequence (first 10 numbers):");
+for (let i = 0; i < 10; i++) {
+    console.log(fibonacci(i));
+}`,
+            python: `# Calculate factorial
+def factorial(n):
+    if n == 0:
+        return 1
+    return n * factorial(n-1)
+
+print("Factorial of numbers 0 to 5:")
+for i in range(6):
+    print(f"{i}! = {factorial(i)}")`,
+            php: `<?php
+// Simple number classifier
+function classifyNumber($num) {
+    if ($num > 0) {
+        return "positive";
+    } elseif ($num < 0) {
+        return "negative";
+    }
+    return "zero";
+}
+
+$numbers = [-5, 0, 10];
+foreach ($numbers as $num) {
+    echo "Number {$num} is " . classifyNumber($num) . "\\n";
+}
+?>`
+        };
+
+        // Initialize CodeMirror
+        let editor = CodeMirror.fromTextArea(document.getElementById("editor"), {
+            lineNumbers: true,
+            theme: "monokai",
+            mode: "javascript",
+            indentUnit: 4,
+            autoCloseBrackets: true,
+            matchBrackets: true,
+            lineWrapping: true
+        });
+
+        // Set initial content
+        editor.setValue(examples.html);
+
+        // Language change handler
+        document.getElementById('languageSelect').addEventListener('change', function(e) {
+            const language = e.target.value;
+            editor.setValue(examples[language]);
+            
+            // Update editor mode
+            const modes = {
+                html: 'xml',
+                nodejs: 'javascript',
+                python: 'python',
+                php: 'php'
+            };
+            editor.setOption('mode', modes[language]);
+        });
+
+        // Run code function
+        async function runCode() {
+            const language = document.getElementById('languageSelect').value;
+            const code = editor.getValue();
+            const output = document.getElementById('output');
+            const status = document.getElementById('executionStatus');
+            const timeInfo = document.getElementById('executionTime');
+            const button = document.getElementById('runButton');
+            const originalText = button.innerHTML;
+
+            if (!code.trim()) return;
+
+            try {
+                button.innerHTML = `<svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg> Running...`;
+                button.disabled = true;
+                status.textContent = 'Running...';
+                timeInfo.textContent = '';
+                output.textContent = '';
+
+                const startTime = performance.now();
+
+                if (language === 'html') {
+                    output.className = 'output-content html-mode';
+                    // Sử dụng API upsert cho HTML
+                    const response = await fetch('/api/render/upsert', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ 
+                            content: code,
+                            id: currentRenderID 
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to render HTML');
+                    }
+
+                    const data = await response.json();
+                    currentRenderID = data.id;
+
+                    // Hiển thị kết quả trong iframe và thêm link
+                    output.innerHTML = `
+                        <div class="output-header">
+                            <a href="${data.url}" target="_blank" class="view-link">
+                                Open in new tab
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+                                </svg>
+                            </a>
+                        </div>
+                        <iframe src="/render-content/${currentRenderID}" class="output-frame"></iframe>
+                    `;
+                    status.textContent = '✅ Rendered';
+                    
+                } else {
+                    output.className = 'output-content';
+                    // Xử lý các ngôn ngữ khác như cũ
+                    const response = await fetch('/api/execute', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ code })
+                    });
+
+                    const data = await response.json();
+                    const executionTime = (performance.now() - startTime).toFixed(2);
+
+                    if (data.error) {
+                        output.innerHTML = `<div class="error">${data.error}</div>`;
+                        status.textContent = '❌ Error';
+                    } else {
+                        output.textContent = data.output || 'No output';
+                        status.textContent = data.exitCode === 0 ? '✅ Success' : '❌ Error';
+                    }
+
+                    timeInfo.textContent = `Execution time: ${executionTime}ms`;
+                }
+
+            } catch (error) {
+                output.innerHTML = `<div class="error">Failed to execute code: ${error.message}</div>`;
+                status.textContent = '❌ Error';
+            } finally {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        }
+
+        // Check available languages
+        async function checkAvailableLanguages() {
+            try {
+                const response = await fetch('/api/languages');
+                const languages = await response.json();
+                
+                const select = document.getElementById('languageSelect');
+                Array.from(select.options).forEach(option => {
+                    if (option.value !== 'html' && !languages[option.value]) {
+                        option.disabled = true;
+                        option.text += ' (Not Available)';
+                    }
+                });
+            } catch (error) {
+                console.error('Error checking available languages:', error);
+            }
+        }
+
+        // Initialize
+        checkAvailableLanguages();
+    </script>
+</body>
+</html> 

@@ -812,6 +812,11 @@ app.get('/api/languages', (req, res) => {
     res.json(AVAILABLE_LANGUAGES);
 });
 
+// Thêm route cho playground
+app.get('/playground', (req, res) => {
+    res.render('playground');
+});
+
 // Thay đổi listen để sử dụng httpServer
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
