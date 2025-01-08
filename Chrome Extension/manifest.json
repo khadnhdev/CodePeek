@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "CodePeek: Instant Live Preview",
     "version": "1.0",
-    "description": "Preview HTML, JS, CSS with external CDN, Mermaid diagrams, and SVG live on You.com and ChatGPT.",
+    "description": "Preview HTML, JS, CSS with external CDN, Mermaid diagrams, and SVG live on ChatGPT, You.com and DeepSeek",
     "icons": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -23,7 +23,8 @@
       "https://codepeek.jobsum.works/*",
       "http://localhost:3000/*",
       "https://you.com/*",
-      "https://chatgpt.com/*"
+      "https://chatgpt.com/*",
+	  "https://chat.deepseek.com/*"
     ],
     "background": {
       "service_worker": "background.js"
@@ -32,7 +33,8 @@
       {
         "matches": [
           "https://you.com/*",
-          "https://chatgpt.com/*"
+          "https://chatgpt.com/*",
+		  "https://chat.deepseek.com/*"
         ],
         "js": ["detector.js", "content.js"]
       }
