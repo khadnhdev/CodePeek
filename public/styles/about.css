@@ -116,6 +116,33 @@
     transform: translateY(-2px);
 }
 
+.support-section {
+    margin-bottom: 2rem;
+}
+
+.support-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1.75rem;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.support-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+}
+
+.support-emoji {
+    font-size: 1.25rem;
+}
+
 @media (max-width: 768px) {
     .about-page {
         padding: 3rem 0;

@@ -16,6 +16,7 @@ const rateLimit = require('express-rate-limit');
 // Base URL configuration
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const DEFAULT_PORT = 3000;
+const PROTOCAL = 'http';
 //const BASE_URL = 'https://codepeek.jobsum.works';
 
 const app = express();
@@ -177,7 +178,7 @@ app.post('/api/render', (req, res) => {
                 return res.status(500).json({ error: err.message });
             }
             
-            const viewUrl = `${req.protocol}://${req.get('host')}/view/${id}`;
+            const viewUrl = `${PROTOCAL}://${req.get('host')}/view/${id}`;
             logger.create('Render Created', {
                 id,
                 type,
@@ -492,7 +493,7 @@ app.post('/api/render/upsert', (req, res) => {
                     return res.status(500).json({ error: 'Database error' });
                 }
 
-                const viewUrl = `${req.protocol}://${req.get('host')}/view/${newId}`;
+                const viewUrl = `${PROTOCAL}://${req.get('host')}/view/${newId}`;
                 logger.create('Render Created', {
                     id: newId,
                     type,

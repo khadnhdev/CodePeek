@@ -636,3 +636,32 @@ body {
         font-size: 1.1rem;
     }
 } 
+
+/* Support button in header */
+.nav-links .support-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #000;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+}
+
+.nav-links .support-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.nav-links .support-emoji {
+    font-size: 1.125rem;
+}
+
+@media (max-width: 768px) {
+    .nav-links {
+        display: none;
+    }
+} 
