@@ -298,7 +298,9 @@ async function processCodeBlock(node) {
     const isHTML = detector.isHTML(code);
     const isMermaid = detector.isMermaid(code);
     const isSVG = detector.isSVG(code);
-    if (!isHTML && !isMermaid && !isSVG) {
+    const isReact = detector.isReact(code);
+
+    if (!isHTML && !isMermaid && !isSVG && !isReact) {
         return;
     }
 
@@ -308,7 +310,8 @@ async function processCodeBlock(node) {
     if (codeBlockManager.exists(contentHash)) {
         debugLog('Code block already exists:', {
             hash: contentHash,
-            preview: code.substring(0, 50) + '...'
+            preview: code.substring(0, 50) + '...',
+            type: isReact ? 'React' : isHTML ? 'HTML' : isMermaid ? 'Mermaid' : 'SVG'
         });
         return;
     }
@@ -316,20 +319,23 @@ async function processCodeBlock(node) {
     debugLog('Processing new code block:', { 
         hasContainer: !!currentPreviewContainer,
         contentHash,
-        preview: code.substring(0, 50) + '...'
+        preview: code.substring(0, 50) + '...',
+        type: isReact ? 'React' : isHTML ? 'HTML' : isMermaid ? 'Mermaid' : 'SVG'
     });
 
     node.dataset.lastContent = code;
     node.dataset.contentHash = contentHash;
+    node.dataset.codeType = isReact ? 'react' : isHTML ? 'html' : isMermaid ? 'mermaid' : 'svg';
     
     const previewId = currentPreviewContainer?.dataset.previewId;
 
-    // Gọi API upsert
+    // Gọi API upsert với thông tin về loại code
     chrome.runtime.sendMessage({
         type: 'RENDER_CODE',
         payload: { 
             code,
-            nodeId: previewId || undefined
+            nodeId: previewId || undefined,
+            codeType: isReact ? 'react' : isHTML ? 'html' : isMermaid ? 'mermaid' : 'svg'
         }
     }, response => {
         if (response && response.success) {
@@ -342,6 +348,7 @@ async function processCodeBlock(node) {
                 document.body.appendChild(container);
                 currentPreviewContainer = container;
                 container.dataset.previewId = response.previewId;
+                container.dataset.codeType = isReact ? 'react' : isHTML ? 'html' : isMermaid ? 'mermaid' : 'svg';
             }
 
             // Thêm vào manager

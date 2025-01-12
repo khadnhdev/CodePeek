@@ -63,6 +63,36 @@ function detectContentType(content) {
         trimmed.startsWith('flowchart')) {
         return 'mermaid';
     }
+
+    // Check React patterns
+    const reactPatterns = [
+        // JSX syntax
+        /<[A-Z][A-Za-z]*\s*[^>]*>/,
+        // React hooks
+        /use[A-Z][A-Za-z]*/,
+        // React components
+        /class\s+[A-Z][A-Za-z]*\s+extends\s+React\.Component/,
+        /function\s+[A-Z][A-Za-z]*\s*\([^)]*\)\s*{/,
+        // Common React imports
+        /import\s+.*?from\s+['"]react['"]/,
+        /import\s+.*?from\s+['"]react-dom['"]/,
+        // React state và props
+        /this\.props\./,
+        /this\.state\./,
+        /setState\(/,
+        // React lifecycle methods
+        /componentDidMount|componentDidUpdate|componentWillUnmount/
+    ];
+
+    // Đếm số lượng patterns React match được
+    const matchCount = reactPatterns.reduce((count, pattern) => {
+        return count + (pattern.test(content) ? 1 : 0);
+    }, 0);
+
+    // Nếu có ít nhất 2 patterns match thì có khả năng cao là React code
+    if (matchCount >= 2) {
+        return 'react';
+    }
     
     // Check HTML
     if (content.trim().startsWith('<') && content.trim().endsWith('>')) {
@@ -445,6 +475,144 @@ app.post('/api/render/upsert', (req, res) => {
             </body>
             </html>
         `;
+    } else if (type === 'react') {
+        // Tìm và xóa phần render component trong code gốc
+        let cleanedContent = content.replace(/const\s+root\s*=\s*ReactDOM\.createRoot[\s\S]*?root\.render\s*\([^)]*\);?/g, '');
+        // Xóa khai báo hooks trùng lặp
+        cleanedContent = cleanedContent.replace(/const\s*{\s*useState\s*,\s*useEffect\s*}\s*=\s*React\s*;?/g, '');
+
+        // Tìm tên component từ code đã làm sạch
+        const componentMatch = cleanedContent.match(
+            /(?:function|const)\s+([A-Z][A-Za-z]*)\s*(?:=|\()/
+            || /class\s+([A-Z][A-Za-z]*)\s+extends\s+React\.Component/
+        );
+
+        if (!componentMatch) {
+            console.error('No valid React component found in the code');
+            return res.status(400).json({ error: 'No valid React component found in the code' });
+        }
+
+        const componentName = componentMatch[1];
+
+        rendered_content = `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>React Preview - ${componentName}</title>
+                <!-- Thêm Tailwind CSS -->
+                <script src="https://cdn.tailwindcss.com"></script>
+                <!-- React và ReactDOM -->
+                <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+                <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+                <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+                <style>
+                    /* Add some basic styles */
+                    body {
+                        margin: 0;
+                        padding: 20px;
+                        min-height: 100vh;
+                        background: #f5f5f5;
+                    }
+                    #root {
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: calc(100vh - 40px);
+                    }
+                    input {
+                        width: 100%;
+                        padding: 8px;
+                        margin: 8px 0;
+                        border: 1px solid #ddd;
+                        border-radius: 4px;
+                    }
+                    button {
+                        background: #4299e1;
+                        color: white;
+                        padding: 8px 16px;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        margin-top: 8px;
+                    }
+                    button:hover {
+                        background: #3182ce;
+                    }
+                    label {
+                        display: block;
+                        margin-bottom: 4px;
+                        color: #4a5568;
+                    }
+                </style>
+            </head>
+            <body>
+                <div id="root"></div>
+
+                <!-- React Component -->
+                <script type="text/babel">
+                    // Khai báo React hooks và các dependencies
+                    const { 
+                        useState, 
+                        useEffect, 
+                        useRef, 
+                        useCallback, 
+                        useMemo, 
+                        useContext 
+                    } = React;
+
+                    try {
+                        ${cleanedContent}
+
+                        // Kiểm tra component có tồn tại không
+                        if (typeof ${componentName} !== 'function') {
+                            throw new Error('Component ${componentName} is not defined or not a function');
+                        }
+
+                        // Render component
+                        const root = ReactDOM.createRoot(document.getElementById("root"));
+                        root.render(React.createElement(${componentName}));
+
+                    } catch (error) {
+                        // Hiển thị lỗi trong DOM
+                        document.getElementById("root").innerHTML = \`
+                            <div style="color: red; padding: 20px; border: 1px solid red; margin: 20px; border-radius: 4px;">
+                                <h3>Error Rendering React Component:</h3>
+                                <pre>\${error.message}</pre>
+                                <p style="margin-top: 10px; color: #666;">Check the console for more details.</p>
+                            </div>
+                        \`;
+                        console.error('React Render Error:', error);
+                    }
+                </script>
+            </body>
+            </html>
+        `;
+
+        // Validate rendered content
+        try {
+            // Kiểm tra xem rendered_content có chứa các phần cần thiết không
+            const requiredParts = [
+                'react@18/umd/react.development.js',
+                'react-dom@18/umd/react-dom.development.js',
+                'babel.min.js',
+                'type="text/babel"',
+                componentName,
+                'root.render'
+            ];
+
+            const missingParts = requiredParts.filter(part => !rendered_content.includes(part));
+            
+            if (missingParts.length > 0) {
+                console.error(`Missing required parts: ${missingParts.join(', ')}`);
+                return res.status(500).json({ error: 'Invalid React template generation' });
+            }
+
+        } catch (error) {
+            console.error('Failed to validate React template:', error);
+            return res.status(500).json({ error: 'Failed to validate React template' });
+        }
     } else if (type === 'html') {
         rendered_content = content;
     } else {

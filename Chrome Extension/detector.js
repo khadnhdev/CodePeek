@@ -40,6 +40,26 @@ class CodeDetector {
             /<svg\s+height=/i,
             /<svg\s+viewBox=/i
         ];
+
+        // Thêm patterns để nhận dạng React code
+        this.reactPatterns = [
+            // JSX syntax
+            /<[A-Z][A-Za-z]*\s*[^>]*>/,
+            // React hooks
+            /use[A-Z][A-Za-z]*/,
+            // React components
+            /class\s+[A-Z][A-Za-z]*\s+extends\s+React\.Component/,
+            /function\s+[A-Z][A-Za-z]*\s*\([^)]*\)\s*{/,
+            // Common React imports
+            /import\s+.*?from\s+['"]react['"]/,
+            /import\s+.*?from\s+['"]react-dom['"]/,
+            // React state và props
+            /this\.props\./,
+            /this\.state\./,
+            /setState\(/,
+            // React lifecycle methods
+            /componentDidMount|componentDidUpdate|componentWillUnmount/
+        ];
     }
 
     isHTML(text) {
@@ -119,15 +139,32 @@ class CodeDetector {
         );
 
         // Thêm log để debug
-        console.log('SVG Check:', {
-            text: trimmed.substring(0, 100),
-            hasSVGTags,
-            hasSVGPatterns,
-            isValidSVG,
-            isCompleteSVG
-        });
+        // console.log('SVG Check:', {
+        //     text: trimmed.substring(0, 100),
+        //     hasSVGTags,
+        //     hasSVGPatterns,
+        //     isValidSVG,
+        //     isCompleteSVG
+        // });
 
         return isCompleteSVG;
+    }
+
+    isReact(text) {
+        const trimmed = text.trim();
+        
+        // Kiểm tra xem có phải là config file không
+        if (this.isConfigFile(trimmed)) {
+            return false;
+        }
+
+        // Đếm số lượng patterns React match được
+        const matchCount = this.reactPatterns.reduce((count, pattern) => {
+            return count + (pattern.test(trimmed) ? 1 : 0);
+        }, 0);
+
+        // Nếu có ít nhất 2 patterns match thì có khả năng cao là React code
+        return matchCount >= 2;
     }
 
     isCodeBlock(node) {
@@ -148,11 +185,15 @@ class CodeDetector {
                 isSVG: this.isSVG(text),
                 isHTML: this.isHTML(text),
                 isMermaid: this.isMermaid(text),
+                isReact: this.isReact(text),
                 preview: text.substring(0, 100)
             });
 
-            // Kiểm tra SVG trước, sau đó mới đến HTML và Mermaid
-            return this.isSVG(text) || this.isHTML(text) || this.isMermaid(text);
+            // Thêm kiểm tra React vào điều kiện return
+            return this.isSVG(text) || 
+                   this.isHTML(text) || 
+                   this.isMermaid(text) ||
+                   this.isReact(text);
         }
         return false;
     }
@@ -163,6 +204,7 @@ class CodeDetector {
         // Loại bỏ các dòng copy button hoặc language indicator
         code = code.replace(/^(Copy code|Copy to clipboard|javascript|html|css|svg|xml|Copy XML|XML|xmlCopy code)$/gm, '').trim();
         code = code.replace("xmlCopy code",'');
+        code = code.replace("javascriptCopied",'');
         // Nếu là SVG, đảm bảo lấy toàn bộ nội dung SVG và loại bỏ comments XML
         if (this.isSVG(code)) {
             // Loại bỏ XML comments trước khi extract SVG
@@ -178,6 +220,55 @@ class CodeDetector {
             code = code.replace(/\s+/g, ' ')
                       .replace(/>\s+</g, '><')
                       .trim();
+        }
+        // Thêm xử lý đặc biệt cho React code
+        else if (this.isReact(code)) {
+            // Tìm component chính
+            const componentMatch = code.match(
+                // Tìm functional component
+                /(?:function|const)\s+([A-Z][A-Za-z]*)\s*(?:=|\()/
+                // Hoặc class component
+                || /class\s+([A-Z][A-Za-z]*)\s+extends\s+React\.Component/
+            );
+
+            if (componentMatch) {
+                const componentName = componentMatch[1];
+                
+                // Tìm điểm bắt đầu và kết thúc của component
+                let startIndex = code.indexOf(componentMatch[0]);
+                let endIndex = code.length;
+                let braceCount = 0;
+                let inComponent = false;
+
+                // Tìm toàn bộ nội dung component
+                for (let i = startIndex; i < code.length; i++) {
+                    if (code[i] === '{') {
+                        braceCount++;
+                        inComponent = true;
+                    } else if (code[i] === '}') {
+                        braceCount--;
+                        if (inComponent && braceCount === 0) {
+                            endIndex = i + 1;
+                            break;
+                        }
+                    }
+                }
+
+                // Thêm phần render vào cuối nếu chưa có
+                let extractedCode = code.substring(startIndex, endIndex).trim();
+                if (!extractedCode.includes('ReactDOM.createRoot')) {
+                    extractedCode += `\n\n// Render component
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<${componentName} />);`;
+                }
+
+                code = extractedCode;
+            }
+
+            // Thêm imports nếu chưa có
+            if (!code.includes('import React')) {
+                code = `const { useState, useEffect } = React;\n\n${code}`;
+            }
         }
         
         return code;
