@@ -1,148 +1,42 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>React Preview - Login</title>
-    <!-- Thêm Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React và ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style>
-        /* Add some basic styles */
-        body {
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            background: #f5f5f5;
-        }
-        #root {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: calc(100vh - 40px);
-        }
-        input {
-            width: 100%;
-            padding: 8px;
-            margin: 8px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        button {
-            background: #4299e1;
-            color: white;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 8px;
-        }
-        button:hover {
-            background: #3182ce;
-        }
-        label {
-            display: block;
-            margin-bottom: 4px;
-            color: #4a5568;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Angular from CDN</title>
+  <!-- Load Angular Libraries from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@angular/core@15.2.0/bundles/core.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@angular/platform-browser@15.2.0/bundles/platform-browser.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@angular/platform-browser-dynamic@15.2.0/bundles/platform-browser-dynamic.umd.js"></script>
 </head>
 <body>
-    <div id="root"></div>
+  <h1>Angular Component from CDN</h1>
+  <app-root></app-root>
 
-    <!-- React Component -->
-    <script type="text/babel">
-        // Khai báo React hooks và các dependencies
-        const { 
-            useState, 
-            useEffect, 
-            useRef, 
-            useCallback, 
-            useMemo, 
-            useContext 
-        } = React;
+  <script>
+    (function() {
+      const { Component, NgModule } = ng.core;
+      const { platformBrowserDynamic } = ng.platformBrowserDynamic;
+      const { BrowserModule } = ng.platformBrowser;
 
-        try {
-            
+      // Define Angular Component
+      @Component({
+        selector: 'app-root',
+        template: '<h2>Hello from Angular loaded via CDN!</h2>',
+      })
+      class AppComponent {}
 
-const Login = () => {
-const [email, setEmail] = useState('');
-const [password, setPassword] = useState('');
-const [error, setError] = useState('');
+      // Define Angular Module
+      @NgModule({
+        declarations: [AppComponent],
+        imports: [BrowserModule],
+        bootstrap: [AppComponent]
+      })
+      class AppModule {}
 
-const handleSubmit = (e) => {
-e.preventDefault();
-if (!email || !password) {
-setError('Email and password are required.');
-} else {
-// Thực hiện đăng nhập (giả sử gọi API)
-console.log('Email:', email);
-console.log('Password:', password);
-// Xóa lỗi nếu đăng nhập thành công
-setError('');
-}
-};
-
-return (
-<div style={{ width: '300px', margin: '0 auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
-<h2>Login</h2>
-<form onSubmit={handleSubmit}>
-<div>
-<label>Email:</label>
-<input
-type="email"
-value={email}
-onChange={(e) => setEmail(e.target.value)}
-placeholder="Enter your email"
-required
-/>
-</div>
-<div>
-<label>Password:</label>
-<input
-type="password"
-value={password}
-onChange={(e) => setPassword(e.target.value)}
-placeholder="Enter your password"
-required
-/>
-</div>
-{error && <div style={{ color: 'red' }}>{error}</div>}
-<div>
-<button type="submit" style={{ width: '100%' }}>Login</button>
-</div>
-</form>
-</div>
-);
-}
-
-// Render component
-
-
-            // Kiểm tra component có tồn tại không
-            if (typeof Login !== 'function') {
-                throw new Error('Component Login is not defined or not a function');
-            }
-
-            // Render component
-            const root = ReactDOM.createRoot(document.getElementById("root"));
-            root.render(React.createElement(Login));
-
-        } catch (error) {
-            // Hiển thị lỗi trong DOM
-            document.getElementById("root").innerHTML = `
-                <div style="color: red; padding: 20px; border: 1px solid red; margin: 20px; border-radius: 4px;">
-                    <h3>Error Rendering React Component:</h3>
-                    <pre>${error.message}</pre>
-                    <p style="margin-top: 10px; color: #666;">Check the console for more details.</p>
-                </div>
-            `;
-            console.error('React Render Error:', error);
-        }
-    </script>
+      // Bootstrap Angular application
+      platformBrowserDynamic().bootstrapModule(AppModule);
+    })();
+  </script>
 </body>
 </html>

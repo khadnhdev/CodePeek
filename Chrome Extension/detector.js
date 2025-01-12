@@ -12,6 +12,9 @@ class CodeDetector {
             'gitGraph'
         ];
 
+        // Lưu trữ kết quả kiểm tra trước đó
+        this.memoryCache = new Map();
+
         // Các pattern thường thấy trong config files
         this.configPatterns = [
             /^server\s*{/i,
@@ -43,22 +46,36 @@ class CodeDetector {
 
         // Thêm patterns để nhận dạng React code
         this.reactPatterns = [
-            // JSX syntax
+            // ES6 imports
+            /import\s+.*?['"]react['"]/i,
+            /import\s+.*?['"]react-dom['"]/i,
+            /import\s+React\s*,?\s*{.*?}\s*from\s+['"]react['"]/i,
+            
+            // Component definitions
+            /(?:function|const|class)\s+[A-Z][A-Za-z]*\s*(?:=|extends|\()/,
+            /const\s+[A-Z][A-Za-z]*\s*=\s*\(?\s*(?:props)?\s*\)?\s*=>/,
+            /export\s+(?:default\s+)?(?:function|const|class)\s+[A-Z][A-Za-z]*/,
+            
+            // JSX
             /<[A-Z][A-Za-z]*\s*[^>]*>/,
-            // React hooks
+            /<\/[A-Z][A-Za-z]*>/,
+            
+            // Hooks
             /use[A-Z][A-Za-z]*/,
-            // React components
-            /class\s+[A-Z][A-Za-z]*\s+extends\s+React\.Component/,
-            /function\s+[A-Z][A-Za-z]*\s*\([^)]*\)\s*{/,
-            // Common React imports
-            /import\s+.*?from\s+['"]react['"]/,
-            /import\s+.*?from\s+['"]react-dom['"]/,
-            // React state và props
-            /this\.props\./,
-            /this\.state\./,
-            /setState\(/,
-            // React lifecycle methods
-            /componentDidMount|componentDidUpdate|componentWillUnmount/
+            
+            // Props and state
+            /props\.[A-Za-z]+/,
+            /setState\s*\(/,
+            /useState\s*\(/,
+            
+            // Common React patterns
+            /className=/,
+            /onClick=/,
+            /onChange=/,
+            /onSubmit=/,
+            
+            // Return statement with JSX
+            /return\s*\(\s*</
         ];
     }
 
@@ -152,9 +169,15 @@ class CodeDetector {
 
     isReact(text) {
         const trimmed = text.trim();
+
+        // Kiểm tra trong bộ nhớ trước
+        if (this.memoryCache.has(trimmed)) {
+            return this.memoryCache.get(trimmed);
+        }
         
         // Kiểm tra xem có phải là config file không
         if (this.isConfigFile(trimmed)) {
+            this.memoryCache.set(trimmed, false);
             return false;
         }
 
@@ -164,7 +187,17 @@ class CodeDetector {
         }, 0);
 
         // Nếu có ít nhất 2 patterns match thì có khả năng cao là React code
-        return matchCount >= 2;
+        const isReactCode = matchCount >= 2;
+
+        // Lưu kết quả vào bộ nhớ
+        this.memoryCache.set(trimmed, isReactCode);
+
+        // Debug log chỉ khi không có trong bộ nhớ
+        if (!this.memoryCache.has(trimmed)) {
+            console.log('React pattern matches:', matchCount);
+        }
+
+        return isReactCode;
     }
 
     isCodeBlock(node) {

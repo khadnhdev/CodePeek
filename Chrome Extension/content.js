@@ -34,6 +34,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 });
 
+var CODEPEEK_DEBUG = false;
+
 function debugLog(message, data = '') {
     const styles = [
         'color: #00ff00',
@@ -44,9 +46,9 @@ function debugLog(message, data = '') {
         'border-radius: 4px'
     ].join(';');
 
-    if (data) {
+    if (CODEPEEK_DEBUG && data) {
         console.log(`%c[Preview Debug] ${message}`, styles, data);
-    } else {
+    } else if (CODEPEEK_DEBUG) {
         console.log(`%c[Preview Debug] ${message}`, styles);
     }
 }
