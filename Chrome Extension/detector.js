@@ -77,6 +77,13 @@ class CodeDetector {
             // Return statement with JSX
             /return\s*\(\s*</
         ];
+
+        // Thêm patterns để nhận dạng markmap
+        this.markmapPatterns = [
+            /^#\s+.*?(?:\n\s*##|\n\s*-|\n\s*\*)/m,  // Heading followed by subheading or list
+            /^[-*]\s+.*?(?:\n\s+[-*]|\n\s+#)/m,     // List with nested items or headings
+            /^#\s+.*?\n(?:\s*[-*]\s+.*?\n)*\s*##/m  // Heading with list items and subheading
+        ];
     }
 
     isHTML(text) {
@@ -200,6 +207,25 @@ class CodeDetector {
         return isReactCode;
     }
 
+    isMarkmap(text) {
+        const trimmed = text.trim();
+        
+        if (this.isConfigFile(trimmed)) {
+            return false;
+        }
+
+        // Kiểm tra có structure của markmap không
+        const hasMarkmapStructure = this.markmapPatterns.some(pattern => pattern.test(trimmed));
+        
+        // Kiểm tra có ít nhất 2 level của heading hoặc list
+        const hasMultipleLevels = (
+            (trimmed.match(/^#/gm) || []).length >= 2 || // Multiple headings
+            (trimmed.match(/^\s*[-*]\s+/gm) || []).length >= 2 // Multiple list items
+        );
+
+        return hasMarkmapStructure && hasMultipleLevels;
+    }
+
     isCodeBlock(node) {
         // Bỏ qua các elements có class hoặc data attribute liên quan đến config
         const classAndAttrs = (node.className || '') + ' ' + (node.getAttribute('data-language') || '');
@@ -219,14 +245,16 @@ class CodeDetector {
                 isHTML: this.isHTML(text),
                 isMermaid: this.isMermaid(text),
                 isReact: this.isReact(text),
+                isMarkmap: this.isMarkmap(text),
                 preview: text.substring(0, 100)
             });
 
-            // Thêm kiểm tra React vào điều kiện return
+            // Thêm kiểm tra markmap vào điều kiện return
             return this.isSVG(text) || 
                    this.isHTML(text) || 
                    this.isMermaid(text) ||
-                   this.isReact(text);
+                   this.isReact(text) ||
+                   this.isMarkmap(text);
         }
         return false;
     }
@@ -235,9 +263,17 @@ class CodeDetector {
         let code = node.textContent.trim();
         
         // Loại bỏ các dòng copy button hoặc language indicator
-        code = code.replace(/^(Copy code|Copy to clipboard|javascript|html|css|svg|xml|Copy XML|XML|xmlCopy code)$/gm, '').trim();
+        code = code.replace(/^(Copy code|Copy to clipboard|javascript|html|css|svg|xml|Copy XML|XML|xmlCopy code|markmap)$/gm, '').trim();
         code = code.replace("xmlCopy code",'');
         code = code.replace("javascriptCopied",'');
+        code = code.replace("markmap",'');
+        code = code.replace("markdown",'');
+        code = code.replace("Copy code",'');
+        code = code.replace("Copy to clipboard",'');
+        code = code.replace("Copy XML",'');
+        code = code.replace("XML",'');
+        code = code.replace("xmlCopy code",'');
+
         // Nếu là SVG, đảm bảo lấy toàn bộ nội dung SVG và loại bỏ comments XML
         if (this.isSVG(code)) {
             // Loại bỏ XML comments trước khi extract SVG
@@ -303,7 +339,38 @@ root.render(<${componentName} />);`;
                 code = `const { useState, useEffect } = React;\n\n${code}`;
             }
         }
-        
+
+        // Thêm xử lý đặc biệt cho markmap
+        if (this.isMarkmap(code)) {
+            // Loại bỏ các dòng trống thừa
+            code = code.split('\n')
+                      .filter(line => line.trim())
+                      .join('\n');
+            
+            // Đảm bảo các heading bắt đầu ở đầu dòng
+            code = code.replace(/([^\n])#/g, '$1\n#');
+            
+            // Đảm bảo các list items bắt đầu ở đầu dòng
+            code = code.replace(/([^\n])[-*]/g, '$1\n-');
+            
+            // Chuẩn hóa indent cho list items
+            code = code.split('\n').map(line => {
+                const indent = line.match(/^\s*/)[0];
+                const content = line.trim();
+                if (content.startsWith('-') || content.startsWith('*')) {
+                    // Giữ nguyên indent cho list items
+                    return indent + content;
+                }
+                return content;
+            }).join('\n');
+
+            // Đảm bảo có một dòng trống giữa các sections
+            code = code.replace(/([^#\s])\n#/g, '$1\n\n#');
+            
+            // Loại bỏ khoảng trắng thừa cuối cùng
+            code = code.trim();
+        }
+
         return code;
     }
 

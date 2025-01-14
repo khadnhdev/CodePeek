@@ -301,8 +301,9 @@ async function processCodeBlock(node) {
     const isMermaid = detector.isMermaid(code);
     const isSVG = detector.isSVG(code);
     const isReact = detector.isReact(code);
+    const isMarkmap = detector.isMarkmap(code);
 
-    if (!isHTML && !isMermaid && !isSVG && !isReact) {
+    if (!isHTML && !isMermaid && !isSVG && !isReact && !isMarkmap) {
         return;
     }
 
@@ -313,7 +314,7 @@ async function processCodeBlock(node) {
         debugLog('Code block already exists:', {
             hash: contentHash,
             preview: code.substring(0, 50) + '...',
-            type: isReact ? 'React' : isHTML ? 'HTML' : isMermaid ? 'Mermaid' : 'SVG'
+            type: isReact ? 'React' : isHTML ? 'HTML' : isMermaid ? 'Mermaid' : isMarkmap ? 'Markmap' : 'SVG'
         });
         return;
     }
@@ -322,12 +323,12 @@ async function processCodeBlock(node) {
         hasContainer: !!currentPreviewContainer,
         contentHash,
         preview: code.substring(0, 50) + '...',
-        type: isReact ? 'React' : isHTML ? 'HTML' : isMermaid ? 'Mermaid' : 'SVG'
+        type: isReact ? 'React' : isHTML ? 'HTML' : isMermaid ? 'Mermaid' : isMarkmap ? 'Markmap' :  'SVG'
     });
 
     node.dataset.lastContent = code;
     node.dataset.contentHash = contentHash;
-    node.dataset.codeType = isReact ? 'react' : isHTML ? 'html' : isMermaid ? 'mermaid' : 'svg';
+    node.dataset.codeType = isReact ? 'react' : isHTML ? 'html' : isMermaid ? 'mermaid' : isMarkmap ? 'markmap' : 'svg';
     
     const previewId = currentPreviewContainer?.dataset.previewId;
 
@@ -337,7 +338,7 @@ async function processCodeBlock(node) {
         payload: { 
             code,
             nodeId: previewId || undefined,
-            codeType: isReact ? 'react' : isHTML ? 'html' : isMermaid ? 'mermaid' : 'svg'
+            codeType: isReact ? 'react' : isHTML ? 'html' : isMermaid ? 'mermaid' : isMarkmap ? 'markmap' : 'svg'
         }
     }, response => {
         if (response && response.success) {
@@ -350,7 +351,7 @@ async function processCodeBlock(node) {
                 document.body.appendChild(container);
                 currentPreviewContainer = container;
                 container.dataset.previewId = response.previewId;
-                container.dataset.codeType = isReact ? 'react' : isHTML ? 'html' : isMermaid ? 'mermaid' : 'svg';
+                container.dataset.codeType = isReact ? 'react' : isHTML ? 'html' : isMermaid ? 'mermaid' : isMarkmap ? 'markmap' : 'svg';
             }
 
             // Thêm vào manager
@@ -359,7 +360,7 @@ async function processCodeBlock(node) {
 
             debugLog('Code blocks status:', codeBlockManager.getDebugInfo());
         }
-    });
+    }); 
 }
 
 // Hàm tạo hash từ string

@@ -64,6 +64,19 @@ function detectContentType(content) {
         return 'mermaid';
     }
 
+    // Check Markmap
+    const markmapPatterns = [
+        /^#\s+.*?(?:\n\s*##|\n\s*-|\n\s*\*)/m,  // Heading followed by subheading or list
+        /^[-*]\s+.*?(?:\n\s+[-*]|\n\s+#)/m,     // List with nested items or headings
+        /^#\s+.*?\n(?:\s*[-*]\s+.*?\n)*\s*##/m  // Heading with list items and subheading
+    ];
+
+    if (markmapPatterns.some(pattern => pattern.test(content)) &&
+        ((content.match(/^#/gm) || []).length >= 2 || // Multiple headings
+         (content.match(/^\s*[-*]\s+/gm) || []).length >= 2)) { // Multiple list items
+        return 'markmap';
+    }
+
     // Check React patterns
     const reactPatterns = [
         // ES6 imports
@@ -452,7 +465,38 @@ app.post('/api/render/upsert', (req, res) => {
     
     // Tạo rendered_content
     let rendered_content;
-    if (type === 'svg') {
+    if (type === 'markmap') {
+        rendered_content = `
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8" />
+                <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                <title>Markmap</title>
+                <style>
+                    svg.markmap {
+                        width: 100%;
+                        height: 100vh;
+                    }
+                    body {
+                        margin: 0;
+                        padding: 0;
+                    }
+                </style>
+                <script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@0.16"></script>
+            </head>
+            <body>
+                <div class="markmap">
+                    <script type="text/template">
+                       
+                        ${content.replace(/`/g, '\\`').replace(/\$/g, '\\$')}
+                    </script>
+                </div>
+            </body>
+            </html>
+        `;
+    } else if (type === 'svg') {
         rendered_content = `
             <!DOCTYPE html>
             <html>

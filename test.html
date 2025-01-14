@@ -1,42 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Angular from CDN</title>
-  <!-- Load Angular Libraries from CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@angular/core@15.2.0/bundles/core.umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@angular/platform-browser@15.2.0/bundles/platform-browser.umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@angular/platform-browser-dynamic@15.2.0/bundles/platform-browser-dynamic.umd.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markmap Example</title>
+    <!-- Use the Markmap View CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.4.3"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #markmap {
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
 </head>
 <body>
-  <h1>Angular Component from CDN</h1>
-  <app-root></app-root>
+    <svg id="markmap"></svg>
+    <script>
+        // Define the Markdown content
+        const content = `
+# Sơ đồ Tư Duy
 
-  <script>
-    (function() {
-      const { Component, NgModule } = ng.core;
-      const { platformBrowserDynamic } = ng.platformBrowserDynamic;
-      const { BrowserModule } = ng.platformBrowser;
+## Chủ đề Chính
+- Điều 1
+  - Chi tiết 1.1
+  - Chi tiết 1.2
+- Điều 2
+  - Chi tiết 2.1
+  - Chi tiết 2.2
+- Điều 3
+  - Chi tiết 3.1
+        `;
 
-      // Define Angular Component
-      @Component({
-        selector: 'app-root',
-        template: '<h2>Hello from Angular loaded via CDN!</h2>',
-      })
-      class AppComponent {}
+        // Reference the SVG container
+        const svg = document.getElementById('markmap');
 
-      // Define Angular Module
-      @NgModule({
-        declarations: [AppComponent],
-        imports: [BrowserModule],
-        bootstrap: [AppComponent]
-      })
-      class AppModule {}
-
-      // Bootstrap Angular application
-      platformBrowserDynamic().bootstrapModule(AppModule);
-    })();
-  </script>
+        // Create the Markmap instance
+        const { Markmap } = window.markmap;
+        Markmap.create(svg, {}, content);
+    </script>
 </body>
 </html>
