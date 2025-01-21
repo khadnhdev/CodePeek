@@ -1,10 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
     const toggle = document.getElementById('renderToggle');
     const status = document.getElementById('status');
+    const versionElement = document.getElementById('version-number');
 
-    // Load saved state, mặc định là true
+    // Load version from manifest
+    fetch(chrome.runtime.getURL('manifest.json'))
+        .then(response => response.json())
+        .then(manifest => {
+            versionElement.textContent = manifest.version;
+        });
+
+    // Load saved state
     chrome.storage.local.get(['renderEnabled'], (result) => {
-        // Nếu chưa có giá trị trong storage, set mặc định là true
         if (result.renderEnabled === undefined) {
             chrome.storage.local.set({ renderEnabled: true });
             toggle.checked = true;
@@ -20,7 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.storage.local.set({ renderEnabled: enabled });
         updateStatus(enabled);
 
-        // Notify content script
         chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
             if (tabs[0]) {
                 chrome.tabs.sendMessage(tabs[0].id, {

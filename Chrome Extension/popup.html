@@ -1,140 +1,190 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <title>CodePeek Settings</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         body {
-            width: 200px;
+            width: 300px;
             padding: 16px;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-        }
-        .header {
-            font-size: 14px;
-            font-weight: 600;
-            color: #2D3748;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .header svg {
-            width: 16px;
-            height: 16px;
-            color: #4A5568;
         }
         .toggle-container {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
-        .toggle-label {
-            font-size: 13px;
-            color: #4A5568;
-        }
-        .toggle-switch {
+        .switch {
             position: relative;
             display: inline-block;
-            width: 40px;
-            height: 20px;
+            width: 50px;
+            height: 24px;
+            margin-right: 12px;
         }
-        .toggle-switch input {
+        .switch input {
             opacity: 0;
             width: 0;
             height: 0;
         }
-        .toggle-slider {
+        .slider {
             position: absolute;
             cursor: pointer;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: #CBD5E0;
-            transition: .3s;
-            border-radius: 20px;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
         }
-        .toggle-slider:before {
+        .slider:before {
             position: absolute;
             content: "";
             height: 16px;
             width: 16px;
-            left: 2px;
-            bottom: 2px;
+            left: 4px;
+            bottom: 4px;
             background-color: white;
-            transition: .3s;
+            transition: .4s;
             border-radius: 50%;
         }
-        input:checked + .toggle-slider {
-            background-color: #4299E1;
+        input:checked + .slider {
+            background-color: #48BB78;
         }
-        input:checked + .toggle-slider:before {
-            transform: translateX(20px);
+        input:checked + .slider:before {
+            transform: translateX(26px);
         }
-        .status {
-            font-size: 12px;
+        #status {
+            font-size: 14px;
+        }
+        .guide {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 16px;
+        }
+        .guide h3 {
+            margin: 0 0 12px 0;
+            color: #2D3748;
+        }
+        .example {
+            background: #F7FAFC;
+            padding: 8px;
+            margin: 8px 0;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #4A5568;
+        }
+        .prompt {
             color: #718096;
-            text-align: center;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #E2E8F0;
+            font-style: italic;
+            margin-top: 4px;
+            font-size: 12px;
         }
         .footer {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #eee;
             font-size: 12px;
             color: #718096;
             text-align: center;
-            margin-top: 16px;
-            padding-top: 12px;
-            border-top: 1px solid #E2E8F0;
-            display: flex;
-            justify-content: center;
-            gap: 12px;
         }
         .footer a {
             color: #4A5568;
             text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            transition: color 0.2s ease;
+            margin: 0 8px;
         }
         .footer a:hover {
             color: #2B6CB0;
         }
-        .footer svg {
-            width: 14px;
-            height: 14px;
+        .example i {
+            width: 20px;
+            margin-right: 8px;
+            color: #4A5568;
+        }
+        .footer i {
+            color: #E53E3E;
+        }
+        .version {
+            font-size: 11px;
+            color: #A0AEC0;
+            margin-top: 4px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .version-badge {
+            background: #EDF2F7;
+            color: #4A5568;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .version-badge i {
+            font-size: 10px;
+            color: #48BB78;
+        }
+
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            gap: 12px;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" fill="currentColor"/>
-            <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2"/>
-        </svg>
-        Live Preview
+        <div class="toggle-container">
+            <label class="switch">
+                <input type="checkbox" id="renderToggle">
+                <span class="slider"></span>
+            </label>
+            <span id="status">Preview is active</span>
+        </div>
+        <div class="version-badge">
+            <i class="fas fa-circle"></i>
+            <span id="version-number">1.2</span>
+        </div>
     </div>
-    <div class="toggle-container">
-        <span class="toggle-label">Auto Preview</span>
-        <label class="toggle-switch">
-            <input type="checkbox" id="renderToggle">
-            <span class="toggle-slider"></span>
-        </label>
+
+    <div class="guide">
+        <h3>Example Prompts</h3>
+        <div class="example">
+            <i class="fas fa-code"></i> HTML Visualization
+            <div class="prompt">Create a responsive HTML page for a modern SaaS dashboard with navigation, stats cards, and a data table</div>
+        </div>
+        <div class="example">
+            <i class="fas fa-project-diagram"></i> Mermaid Diagrams
+            <div class="prompt">Create a sequence diagram using mermaid to show user authentication flow with JWT tokens</div>
+        </div>
+        <div class="example">
+            <i class="fas fa-sitemap"></i> Learning Mindmaps
+            <div class="prompt">Create a mindmap using markmap to show the complete roadmap for becoming a fullstack developer in 2024</div>
+        </div>
     </div>
-    <div class="status" id="status"></div>
+
     <div class="footer">
-        <a href="https://github.com/khadnhdev" target="_blank" title="GitHub">
-            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z"/>
-            </svg>
-            GitHub
-        </a>
-        <a href="https://www.linkedin.com/in/khadnh/" target="_blank" title="LinkedIn">
-            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path fill-rule="evenodd" clip-rule="evenodd" d="M19 3a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h14zm-.5 15.5v-5.3a3.26 3.26 0 00-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 011.4 1.4v4.93h2.79zM6.88 8.56a1.68 1.68 0 001.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 00-1.69 1.69c0 .93.76 1.68 1.69 1.68zm1.39 9.94v-8.37H5.5v8.37h2.77z"/>
-            </svg>
-            LinkedIn
-        </a>
+        <div class="footer-links">
+            <a href="https://codepeek.jobsum.works/" target="_blank">
+                <i class="fas fa-home"></i> Homepage
+            </a>
+            <a href="https://hongkha.gumroad.com/l/codepeek-instant-code-preview" target="_blank">
+                <i class="fas fa-coffee"></i> Donate
+            </a>
+            <a href="https://github.com/khadnhdev" target="_blank">
+                <i class="fab fa-github"></i> GitHub
+            </a>
+        </div>
+        <div class="copyright">Made with <i class="fas fa-code"></i> by Kha Dnh</div>
     </div>
     <script src="popup.js"></script>
 </body>

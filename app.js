@@ -475,24 +475,22 @@ app.post('/api/render/upsert', (req, res) => {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <title>Markmap</title>
                 <style>
-                    svg.markmap {
-                        width: 100%;
-                        height: 100vh;
+                    .markmap {
+                        position: relative;
                     }
-                    body {
-                        margin: 0;
-                        padding: 0;
+                    .markmap > svg {
+                        width: 100%;
+                        height: 100%;
                     }
                 </style>
-                <script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@0.16"></script>
             </head>
             <body>
                 <div class="markmap">
                     <script type="text/template">
-                       
                         ${content.replace(/`/g, '\\`').replace(/\$/g, '\\$')}
                     </script>
                 </div>
+                <script src="https://cdn.jsdelivr.net/npm/markmap-autoloader@latest"></script>
             </body>
             </html>
         `;

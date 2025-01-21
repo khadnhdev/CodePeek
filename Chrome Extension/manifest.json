@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "CodePeek: ChatGPT Instant Live Preview",
+    "name": "CodePeek - ChatGPT Code Preview & Visualizer",
     "version": "1.2",
-    "description": "Preview HTML, JS, CSS with external CDN, Mermaid diagrams, and SVG live on ChatGPT, You.com and DeepSeek",
+    "description": "ChatGPT Code Visualizer: Live preview HTML, React, JS code, Mermaid diagrams & Mindmaps in ChatGPT, You.com & DeepSeek",
     "icons": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -24,7 +24,7 @@
       "http://localhost:3000/*",
       "https://you.com/*",
       "https://chatgpt.com/*",
-	  "https://chat.deepseek.com/*"
+      "https://chat.deepseek.com/*"
     ],
     "background": {
       "service_worker": "background.js"
@@ -34,10 +34,10 @@
         "matches": [
           "https://you.com/*",
           "https://chatgpt.com/*",
-		  "https://chat.deepseek.com/*"
+          "https://chat.deepseek.com/*"
         ],
         "js": ["detector.js", "content.js"]
       }
     ]
-  }
+}
   

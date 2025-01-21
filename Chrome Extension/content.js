@@ -72,6 +72,7 @@ function createPreviewContainer() {
         min-height: 300px;
         max-width: 90vw;
         max-height: 90vh;
+        transition: transform 0.3s ease;
     `;
 
     const header = document.createElement('div');
@@ -101,7 +102,51 @@ function createPreviewContainer() {
         align-items: center;
     `;
 
-    // Open in Browser button
+    // Thêm nút collapse
+    const collapseBtn = document.createElement('button');
+    collapseBtn.innerHTML = '−'; // Dấu trừ Unicode
+    collapseBtn.title = 'Collapse';
+    collapseBtn.style.cssText = `
+        border: none;
+        background: none;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 0 4px;
+        color: #666;
+        display: flex;
+        align-items: center;
+        width: 24px;
+        height: 24px;
+        justify-content: center;
+    `;
+
+    let isCollapsed = false;
+    const content = document.createElement('div');
+    content.style.cssText = `
+        height: 500px;
+        position: relative;
+        transition: height 0.3s ease;
+    `;
+
+    collapseBtn.onclick = (e) => {
+        e.stopPropagation();
+        isCollapsed = !isCollapsed;
+        
+        if (isCollapsed) {
+            content.style.height = '0';
+            collapseBtn.innerHTML = '+'; // Dấu cộng khi đã collapse
+            container.style.minHeight = 'unset';
+            container.style.height = 'auto';
+            container.style.resize = 'none';
+        } else {
+            content.style.height = '500px';
+            collapseBtn.innerHTML = '−'; // Dấu trừ khi expand
+            container.style.minHeight = '300px';
+            container.style.resize = 'both';
+        }
+    };
+
+    // Existing buttons
     const openBrowserBtn = document.createElement('button');
     openBrowserBtn.innerHTML = '↗';
     openBrowserBtn.title = 'Open in Browser';
@@ -115,13 +160,6 @@ function createPreviewContainer() {
         display: flex;
         align-items: center;
     `;
-    openBrowserBtn.onclick = (e) => {
-        e.stopPropagation();
-        const iframe = container.querySelector('iframe');
-        if (iframe && iframe.src) {
-            window.open(iframe.src, '_blank');
-        }
-    };
 
     const closeBtn = document.createElement('button');
     closeBtn.innerHTML = '×';
@@ -132,12 +170,6 @@ function createPreviewContainer() {
         cursor: pointer;
         padding: 0 4px;
         color: #666;
-    `;
-
-    const content = document.createElement('div');
-    content.style.cssText = `
-        height: 500px;
-        position: relative;
     `;
 
     const iframe = document.createElement('iframe');
@@ -201,6 +233,7 @@ function createPreviewContainer() {
     }
 
     // Assemble the components
+    controls.appendChild(collapseBtn);
     controls.appendChild(openBrowserBtn);
     controls.appendChild(closeBtn);
     header.appendChild(title);
@@ -216,6 +249,14 @@ function createPreviewContainer() {
         }
     });
     resizeObserver.observe(container);
+
+    openBrowserBtn.onclick = (e) => {
+        e.stopPropagation();
+        const iframe = container.querySelector('iframe');
+        if (iframe && iframe.src) {
+            window.open(iframe.src, '_blank');
+        }
+    };
 
     return { container, iframe };
 }
